@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parasite.AI - Conversational Assistant</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        code, pre { font-family: 'JetBrains Mono', monospace; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #000000; }
+        ::-webkit-scrollbar-thumb { background: #333333; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555555; }
+        @keyframes pulse-slow { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        .animate-pulse-slow { animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        
+        @keyframes rainbow-shift {
+            0% { filter: hue-rotate(0deg); border-color: rgba(255, 0, 0, 0.4); }
+            33% { filter: hue-rotate(120deg); border-color: rgba(0, 255, 0, 0.4); }
+            66% { filter: hue-rotate(240deg); border-color: rgba(0, 0, 255, 0.4); }
+            100% { filter: hue-rotate(360deg); border-color: rgba(255, 0, 0, 0.4); }
+        }
+        .theme-rainbow-active {
+            animation: rainbow-shift 8s linear infinite;
+        }
+    </style>
+</head>
+<body id="mainBody" class="bg-black text-white h-screen flex overflow-hidden selection:bg-white selection:text-black">
+
+    <aside id="sidebar" class="w-72 bg-neutral-950 border-r border-neutral-800 flex flex-col transition-all duration-300 z-20 md:relative absolute h-full -translate-x-full md:translate-x-0">
+        <div class="p-4 border-b border-neutral-800 flex items-center justify-between">
+            <div onclick="startNewChat()" class="flex items-center space-x-2.5 cursor-pointer group">
+                <span class="font-extrabold tracking-widest text-sm">PARASITE.AI</span>
+            </div>
+            <button onclick="toggleSidebar()" class="md:hidden text-neutral-400 hover:text-white p-1 cursor-pointer">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div class="p-3 space-y-2">
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="startNewChat()" class="bg-white text-black hover:bg-neutral-200 transition-colors font-medium py-2.5 px-3 rounded-lg flex items-center justify-center space-x-1.5 text-xs shadow-sm cursor-pointer">
+                    <i class="fa-solid fa-plus text-[10px]"></i>
+                    <span>New Chat</span>
+                </button>
+                <button onclick="startTemporaryChat()" class="bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 hover:text-white transition-colors font-medium py-2.5 px-3 rounded-lg flex items-center justify-center space-x-1.5 text-xs cursor-pointer" title="Chat sessions that will not be saved to history">
+                    <i class="fa-regular fa-message text-[10px]"></i>
+                    <span>Temporary</span>
+                </button>
+            </div>
+            <div class="relative">
+                <select id="moodSelector" onchange="changeMood(this.value)" class="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-3 py-2 text-xs text-neutral-300 focus:outline-none focus:border-neutral-600 transition-colors cursor-pointer appearance-none">
+                    <option value="default">Mood: Default & Balanced</option>
+                    <option value="cool">Mood: Cool & Chill 😎</option>
+                    <option value="sassy">Mood: Sassy & Witty 💅</option>
+                    <option value="tough">Mood: Tough Love Coach 🏋️</option>
+                    <option value="hype">Mood: Excited & Hype ⚡</option>
+                    <option value="philosopher">Mood: Philosopher 🌌</option>
+                    <option value="pirate">Mood: Pirate Captain 🏴‍☠️</option>
+                </select>
+                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-neutral-500">
+                    <i class="fa-solid fa-chevron-down text-[10px]"></i>
+                </div>
+            </div>
+            <button onclick="openApiKeyModal()" class="w-full bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 transition-colors font-medium py-2 px-3 rounded-lg flex items-center justify-center space-x-2 text-xs cursor-pointer">
+                <span>API & Memory Settings</span>
+            </button>
+        </div>
+
+        <div class="px-3 pb-2">
+            <div class="relative">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-neutral-500">
+                    <i class="fa-solid fa-search text-xs"></i>
+                </span>
+                <input type="text" id="chatSearchInput" oninput="filterChatHistory(this.value)" placeholder="Search chats..." class="w-full bg-neutral-900 border border-neutral-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-600 transition-colors">
+            </div>
+        </div>
+
+        <div class="px-3 py-1 text-[11px] font-semibold text-neutral-500 tracking-wider">CONVERSATIONS</div>
+
+        <div id="chatHistoryList" class="flex-1 overflow-y-auto px-3 space-y-1">
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col h-full bg-black relative">
+        <header class="h-14 border-b border-neutral-900 flex items-center justify-between px-4 bg-black/80 backdrop-blur z-10">
+            <div class="flex items-center space-x-3">
+                <button onclick="toggleSidebar()" class="text-neutral-400 hover:text-white p-2 md:hidden cursor-pointer">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <div class="flex items-center space-x-2.5">
+                    <span id="statusDot" class="w-2 h-2 rounded-full bg-neutral-600 transition-colors"></span>
+                    <span id="headerTitle" class="text-sm font-medium text-neutral-200">Conversational Assistant</span>
+                </div>
+            </div>
+        </header>
+
+        <div id="chatContainer" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+            <div id="introScreen" class="h-full flex flex-col items-center justify-center max-w-xl mx-auto text-center space-y-6">
+                <div class="space-y-2">
+                    <h1 class="text-2xl font-bold tracking-tight">Parasite.AI</h1>
+                    <p class="text-sm text-neutral-400 leading-relaxed">
+                        Your advanced conversational companion and assistant with Web Search & Free Image Generation.
+                    </p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 w-full text-left text-xs">
+                    <div class="bg-neutral-950 border border-neutral-900 p-3 rounded-xl">
+                        <div class="font-semibold text-white mb-1">Deep Knowledge</div>
+                        <p class="text-neutral-400">Ask questions, explore concepts, and brainstorm ideas effortlessly.</p>
+                    </div>
+                    <div class="bg-neutral-950 border border-neutral-900 p-3 rounded-xl">
+                        <div class="font-semibold text-white mb-1">Free Image Generation</div>
+                        <p class="text-neutral-400">Generate custom artwork instantly as PNG for free.</p>
+                    </div>
+                </div>
+                <div class="flex flex-wrap justify-center gap-2 pt-2">
+                    <button onclick="sendPreset('Explain quantum mechanics in simple terms with an example')" class="text-xs bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 px-3 py-2 rounded-lg text-neutral-300 transition-colors cursor-pointer">
+                        Quantum Mechanics Breakdown
+                    </button>
+                    <button onclick="sendPreset('Tell me an interesting historical event and why it matters')" class="text-xs bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 px-3 py-2 rounded-lg text-neutral-300 transition-colors cursor-pointer">
+                        Historical Deep Dive
+                    </button>
+                    <button onclick="sendPreset('A futuristic cyberpunk city at night with neon lights')" class="text-xs bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 px-3 py-2 rounded-lg text-neutral-300 transition-colors cursor-pointer">
+                        ✨ Generate Cyberpunk City
+                    </button>
+                </div>
+            </div>
+
+            <div id="messageList" class="max-w-3xl mx-auto w-full space-y-6 hidden">
+            </div>
+        </div>
+
+        <div class="p-4 bg-black border-t border-neutral-900">
+            <div class="max-w-3xl mx-auto relative">
+                <div class="flex items-center justify-between mb-2 px-1">
+                    <div class="flex items-center space-x-2">
+                        <button id="webSearchToggle" onclick="toggleWebSearch()" class="text-xs px-2.5 py-1 rounded-md border border-neutral-800 bg-neutral-900 text-neutral-400 hover:text-white transition-colors flex items-center space-x-1.5 cursor-pointer">
+                            <span id="webSearchIndicator" class="w-1.5 h-1.5 rounded-full bg-neutral-600"></span>
+                            <span>Web Search</span>
+                        </button>
+                        <button id="imageGenToggle" onclick="toggleImageGen()" class="text-xs px-2.5 py-1 rounded-md border border-neutral-800 bg-neutral-900 text-neutral-400 hover:text-white transition-colors flex items-center space-x-1.5 cursor-pointer">
+                            <span id="imageGenIndicator" class="w-1.5 h-1.5 rounded-full bg-neutral-600"></span>
+                            <span id="imageGenLabel">Image Generator</span>
+                        </button>
+                        <div id="imageModelContainer" class="hidden">
+                            <select id="imageModelSelector" onchange="changeImageModel(this.value)" class="bg-neutral-900 border border-neutral-800 rounded-md px-2.5 py-1 text-xs text-neutral-300 focus:outline-none focus:border-neutral-600 cursor-pointer">
+                                <option value="flux">Model: Flux (Cinematic & HD)</option>
+                                <option value="turbo">Model: Turbo (Ultra Fast)</option>
+                                <option value="deliberate">Model: Deliberate (Detailed Art)</option>
+                                <option value="any-dark">Model: Any Dark (Moody & Artistic)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div id="attachmentPreviewContainer" class="hidden mb-2"></div>
+                <div class="flex items-end bg-neutral-950 border border-neutral-800 rounded-xl focus-within:border-white transition-colors shadow-lg relative">
+                    <div class="p-3 pb-3 flex items-center shrink-0">
+                        <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="handleFileSelected(event)">
+                        <button id="attachFileBtn" onclick="document.getElementById('fileInput').click()" title="Attach Image" class="text-neutral-400 hover:text-white p-1 flex items-center justify-center cursor-pointer transition-colors">
+                            <i class="fa-solid fa-paperclip text-sm"></i>
+                        </button>
+                    </div>
+                    <textarea id="userInput" rows="1" placeholder="Type your message here or describe an image..." class="w-full bg-transparent text-white placeholder-neutral-500 text-sm py-3.5 pr-3 focus:outline-none resize-none max-h-32" onkeydown="handleKeydown(event)" oninput="autoResize(this)"></textarea>
+                    <button id="sendButton" onclick="sendMessage()" class="m-1.5 bg-white text-black hover:bg-neutral-200 transition-colors w-9 h-9 rounded-lg flex items-center justify-center shrink-0 disabled:opacity-30 cursor-pointer">
+                        <i class="fa-solid fa-arrow-up text-sm"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="antiAdBlockModal" class="fixed inset-0 bg-black/95 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-neutral-950 border border-neutral-800 rounded-2xl max-w-md w-full p-6 text-center space-y-4 shadow-2xl">
+            <div class="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 flex items-center justify-center mx-auto text-xl">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <h3 class="text-lg font-bold text-white">Ad Blocker Detected</h3>
+            <p class="text-xs text-neutral-400 leading-relaxed">
+                Disable your ad blocker to use this website.
+            </p>
+            <div id="adblockErrorMsg" class="text-red-400 text-xs hidden font-medium bg-red-500/10 border border-red-500/20 p-2 rounded-lg">
+                Ad blocker is still active! Please disable it to continue.
+            </div>
+            <button onclick="dismissAntiAdBlock()" class="w-full py-2.5 rounded-xl bg-white hover:bg-neutral-200 text-xs font-medium text-black transition-colors cursor-pointer">
+                I Have Disabled My Ad Blocker
+            </button>
+        </div>
+    </div>
+
+    <div id="apiKeyModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-neutral-950 border border-neutral-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between">
+                <h3 class="text-base font-bold text-white flex items-center space-x-2">
+                    <span>API Key & Global Settings</span>
+                </h3>
+                <button onclick="closeApiKeyModal()" class="text-neutral-400 hover:text-white p-1 cursor-pointer">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-medium text-neutral-300 mb-1.5">OpenRouter API Key</label>
+                    <input type="password" id="apiKeyInput" placeholder="sk-or-v1-..." class="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-white transition-colors font-mono">
+                    <p class="text-[11px] text-neutral-500 mt-1">Saved securely in your browser session.</p>
+                </div>
+
+                <div class="border-t border-neutral-900 pt-4">
+                    <label class="block text-xs font-medium text-neutral-300 mb-1.5">Website Theme</label>
+                    <select id="themeSelector" onchange="changeTheme(this.value)" class="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-300 focus:outline-none focus:border-white transition-colors cursor-pointer">
+                        <option value="normal">Normal (Black & White)</option>
+                        <option value="purple">Purple Theme 🟣</option>
+                        <option value="yellow">Yellow Theme 🟡</option>
+                        <option value="red">Red Theme 🔴</option>
+                        <option value="white">White / Clean Light Mode ⚪</option>
+                        <option value="cyan">Cyan Theme 🔵</option>
+                        <option value="rainbow">Slow Smooth Rainbow 🌈</option>
+                    </select>
+                </div>
+
+                <div class="border-t border-neutral-900 pt-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="block text-xs font-medium text-neutral-300">Global Memory ("Remember this")</label>
+                        <button onclick="deleteAllMemory()" class="text-[11px] text-red-400 hover:text-red-300 transition-colors cursor-pointer">Delete All Memory</button>
+                    </div>
+                    <p class="text-[11px] text-neutral-400 mb-3">Anything you ask Parasite.AI to remember across chats is stored here automatically.</p>
+                    <div id="globalMemoryList" class="space-y-2 max-h-40 overflow-y-auto bg-neutral-900/50 border border-neutral-900 rounded-xl p-2.5">
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-2 pt-2 border-t border-neutral-900">
+                <button onclick="closeApiKeyModal()" class="px-4 py-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-xs font-medium text-neutral-300 transition-colors cursor-pointer">Cancel</button>
+                <button onclick="saveApiKey()" class="px-4 py-2 rounded-xl bg-white hover:bg-neutral-200 text-xs font-medium text-black transition-colors cursor-pointer">Save Settings</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="renameModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-neutral-950 border border-neutral-800 rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl">
+            <h3 class="text-sm font-bold text-white">Rename Chat</h3>
+            <input type="text" id="renameInput" onkeydown="handleRenameKeydown(event)" placeholder="Enter new chat title..." class="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-2 text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-white transition-colors">
+            <div class="flex justify-end space-x-2 pt-1">
+                <button onclick="closeRenameModal()" class="px-3 py-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-xs font-medium text-neutral-300 transition-colors cursor-pointer">Cancel</button>
+                <button onclick="confirmRenameChat()" class="px-3 py-1.5 rounded-lg bg-white hover:bg-neutral-200 text-xs font-medium text-black transition-colors cursor-pointer">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let chats = JSON.parse(localStorage.getItem('parasite_ai_chats') || '[]');
+        let globalMemory = JSON.parse(localStorage.getItem('parasite_ai_global_memory') || '[]');
+        let userFeedback = JSON.parse(localStorage.getItem('parasite_ai_feedback') || '{"liked": [], "disliked": []}');
+        let currentMood = localStorage.getItem('parasite_ai_mood') || 'default';
+        let currentImageModel = localStorage.getItem('parasite_ai_image_model') || 'flux';
+        let currentTheme = localStorage.getItem('parasite_ai_theme') || 'normal';
+        let currentChatId = null;
+        let isCurrentChatTemporary = false;
+        let tempChatStore = null;
+        let webSearchMode = false;
+        let imageGenMode = false;
+        let chatToRenameId = null;
+        let attachedImage = null;
+
+        const baseSystemPrompt = "You are Parasite.AI, an advanced, highly capable, and witty conversational AI assistant. You provide concise, engaging, and accurate responses. You can write code, analyze topics, and help with creative tasks.";
+
+        const moodPrompts = {
+            default: "Be balanced, polite, and helpful.",
+            cool: "Be cool, chill, relaxed, use casual slang 😎.",
+            sassy: "Be sassy, sarcastic, witty, and sharp 💅.",
+            tough: "Be a tough-love coach, rigorous, direct, and motivating 🏋️.",
+            hype: "Be extremely enthusiastic, hyped, and energetic ⚡!",
+            philosopher: "Be contemplative, poetic, and philosophical 🌌.",
+            pirate: "Talk like a pirate captain, arrr 🏴‍☠️!"
+        };
+
+        function changeTheme(themeName) {
+            currentTheme = themeName;
+            localStorage.setItem('parasite_ai_theme', themeName);
+            applyTheme(themeName);
+        }
+
+        function applyTheme(themeName) {
+            const body = document.getElementById('mainBody');
+            body.classList.remove('theme-rainbow-active');
+            
+            if (themeName === 'rainbow') {
+                body.classList.add('theme-rainbow-active');
+            } else if (themeName === 'white') {
+                body.className = 'bg-white text-neutral-900 h-screen flex overflow-hidden selection:bg-black selection:text-white';
+            } else {
+                body.className = 'bg-black text-white h-screen flex overflow-hidden selection:bg-white selection:text-black';
+            }
+        }
+
+        window.onload = function() {
+            applyTheme(currentTheme);
+            document.getElementById('themeSelector').value = currentTheme;
+            document.getElementById('moodSelector').value = currentMood;
+            document.getElementById('imageModelSelector').value = currentImageModel;
+            const savedApiKey = localStorage.getItem('openrouter_api_key');
+            if (savedApiKey) {
+                document.getElementById('apiKeyInput').value = savedApiKey;
+            }
+            renderChatHistory();
+            renderGlobalMemoryList();
+            checkAdBlocker();
+        };
+
+        // Anti-Adblock System with Strict Verification
+        function checkAdBlocker() {
+            const bait = document.createElement('div');
+            bait.className = 'adsbox ad-banner pub_300x250';
+            bait.style.width = '1px';
+            bait.style.height = '1px';
+            bait.style.position = 'absolute';
+            bait.style.left = '-9999px';
+            document.body.appendChild(bait);
+
+            setTimeout(() => {
+                if (bait.offsetParent === null || bait.offsetHeight === 0 || window.getComputedStyle(bait).display === 'none') {
+                    document.getElementById('antiAdBlockModal').classList.remove('hidden');
+                }
+                bait.remove();
+            }, 300);
+        }
+
+        function dismissAntiAdBlock() {
+            const bait = document.createElement('div');
+            bait.className = 'adsbox ad-banner pub_300x250';
+            bait.style.width = '1px';
+            bait.style.height = '1px';
+            bait.style.position = 'absolute';
+            bait.style.left = '-9999px';
+            document.body.appendChild(bait);
+
+            setTimeout(() => {
+                const isBlocked = (bait.offsetParent === null || bait.offsetHeight === 0 || window.getComputedStyle(bait).display === 'none');
+                bait.remove();
+                
+                const errMsg = document.getElementById('adblockErrorMsg');
+                if (isBlocked) {
+                    if (errMsg) errMsg.classList.remove('hidden');
+                } else {
+                    if (errMsg) errMsg.classList.add('hidden');
+                    document.getElementById('antiAdBlockModal').classList.add('hidden');
+                }
+            }, 300);
+        }
+
+        function openApiKeyModal() {
+            document.getElementById('apiKeyModal').classList.remove('hidden');
+            renderGlobalMemoryList();
+        }
+
+        function closeApiKeyModal() {
+            document.getElementById('apiKeyModal').classList.add('hidden');
+        }
+
+        function saveApiKey() {
+            const val = document.getElementById('apiKeyInput').value.trim();
+            if (val) {
+                localStorage.setItem('openrouter_api_key', val);
+            }
+            closeApiKeyModal();
+        }
+
+        function renderGlobalMemoryList() {
+            const list = document.getElementById('globalMemoryList');
+            if (!list) return;
+            if (globalMemory.length === 0) {
+                list.innerHTML = '<div class="text-xs text-neutral-500 text-center py-3">No stored memories yet.</div>';
+                return;
+            }
+            list.innerHTML = '';
+            globalMemory.forEach((mem, idx) => {
+                const div = document.createElement('div');
+                div.className = 'flex items-center justify-between bg-neutral-900 border border-neutral-800 p-2 rounded-lg text-xs text-neutral-300';
+                div.innerHTML = `
+                    <span class="truncate pr-2">${escapeHtml(mem)}</span>
+                    <button onclick="deleteMemoryItem(${idx})" class="text-neutral-500 hover:text-red-400 p-1 cursor-pointer shrink-0"><i class="fa-solid fa-trash text-[10px]"></i></button>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function deleteMemoryItem(index) {
+            globalMemory.splice(index, 1);
+            localStorage.setItem('parasite_ai_global_memory', JSON.stringify(globalMemory));
+            renderGlobalMemoryList();
+        }
+
+        function deleteAllMemory() {
+            globalMemory = [];
+            localStorage.setItem('parasite_ai_global_memory', JSON.stringify(globalMemory));
+            renderGlobalMemoryList();
+        }
+
+        function startNewChat() {
+            if (chats.length > 0 && chats[0].messages.length === 0) {
+                return;
+            }
+            isCurrentChatTemporary = false;
+            currentChatId = 'chat_' + Date.now();
+            const newChatObj = {
+                id: currentChatId,
+                title: 'New Conversation',
+                messages: []
+            };
+            chats.unshift(newChatObj);
+            saveChats();
+            renderChatHistory();
+            renderActiveChat();
+            document.getElementById('headerTitle').innerText = 'Conversational Assistant';
+        }
+
+        function startTemporaryChat() {
+            isCurrentChatTemporary = true;
+            currentChatId = 'temp_' + Date.now();
+            tempChatStore = {
+                id: currentChatId,
+                title: 'Temporary Chat (Unsaved)',
+                messages: []
+            };
+            renderActiveChat(tempChatStore);
+            document.getElementById('headerTitle').innerText = 'Temporary Chat (Unsaved)';
+        }
+
+        function saveChats() {
+            if (isCurrentChatTemporary) return;
+            localStorage.setItem('parasite_ai_chats', JSON.stringify(chats));
+        }
+
+        function filterChatHistory(query) {
+            const list = document.getElementById('chatHistoryList');
+            const items = list.children;
+            const q = query.toLowerCase();
+            chats.forEach((chat, idx) => {
+                if (items[idx]) {
+                    if (chat.title.toLowerCase().includes(q)) {
+                        items[idx].style.display = '';
+                    } else {
+                        items[idx].style.display = 'none';
+                    }
+                }
+            });
+        }
+
+        function renderChatHistory() {
+            const list = document.getElementById('chatHistoryList');
+            list.innerHTML = '';
+            chats.forEach(chat => {
+                const isActive = chat.id === currentChatId && !isCurrentChatTemporary;
+                const div = document.createElement('div');
+                div.className = `group flex items-center justify-between px-3 py-2 rounded-lg text-xs cursor-pointer transition-colors ${isActive ? 'bg-neutral-900 text-white font-medium' : 'text-neutral-400 hover:bg-neutral-900/50 hover:text-white'}`;
+                div.onclick = () => loadChat(chat.id);
+                
+                const span = document.createElement('span');
+                span.className = 'truncate pr-2 flex-1';
+                span.innerText = chat.title;
+                div.appendChild(span);
+
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'opacity-0 group-hover:opacity-100 flex items-center space-x-1 shrink-0';
+
+                const renameBtn = document.createElement('button');
+                renameBtn.className = 'text-neutral-500 hover:text-white p-1 cursor-pointer';
+                renameBtn.title = 'Rename chat';
+                renameBtn.innerHTML = '<i class="fa-solid fa-pen text-[10px]"></i>';
+                renameBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    renameChatModal(chat.id);
+                };
+                actionsDiv.appendChild(renameBtn);
+
+                const delBtn = document.createElement('button');
+                delBtn.className = 'text-neutral-500 hover:text-white p-1 cursor-pointer';
+                delBtn.title = 'Delete chat';
+                delBtn.innerHTML = '<i class="fa-solid fa-trash-can text-[10px]"></i>';
+                delBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    deleteChat(chat.id);
+                };
+                actionsDiv.appendChild(delBtn);
+
+                div.appendChild(actionsDiv);
+                list.appendChild(div);
+            });
+        }
+
+        function loadChat(id) {
+            isCurrentChatTemporary = false;
+            currentChatId = id;
+            const chat = chats.find(c => c.id === id);
+            if (chat) {
+                renderActiveChat();
+                document.getElementById('headerTitle').innerText = chat.title;
+                renderChatHistory();
+            }
+        }
+
+        function renameChatModal(id) {
+            chatToRenameId = id;
+            const chat = chats.find(c => c.id === id);
+            if (!chat) return;
+            const modal = document.getElementById('renameModal');
+            const input = document.getElementById('renameInput');
+            input.value = chat.title;
+            modal.classList.remove('hidden');
+            input.focus();
+        }
+
+        function closeRenameModal() {
+            document.getElementById('renameModal').classList.add('hidden');
+            chatToRenameId = null;
+        }
+
+        function handleRenameKeydown(event) {
+            if (event.key === 'Enter') {
+                confirmRenameChat();
+            } else if (event.key === 'Escape') {
+                closeRenameModal();
+            }
+        }
+
+        function confirmRenameChat() {
+            const input = document.getElementById('renameInput');
+            const val = input.value.trim();
+            if (val && chatToRenameId) {
+                const chat = chats.find(c => c.id === chatToRenameId);
+                if (chat) {
+                    chat.title = val;
+                    saveChats();
+                    renderChatHistory();
+                    if (currentChatId === chatToRenameId) {
+                        document.getElementById('headerTitle').innerText = val;
+                    }
+                }
+            }
+            closeRenameModal();
+        }
+
+        function deleteChat(id) {
+            chats = chats.filter(c => c.id !== id);
+            saveChats();
+            if (currentChatId === id) {
+                currentChatId = null;
+                renderActiveChat();
+                document.getElementById('headerTitle').innerText = 'Conversational Assistant';
+            }
+            renderChatHistory();
+        }
+
+        function renderActiveChat(overrideChat = null) {
+            const intro = document.getElementById('introScreen');
+            const messageList = document.getElementById('messageList');
+
+            const chat = overrideChat || chats.find(c => c.id === currentChatId);
+
+            if (!chat || chat.messages.length === 0) {
+                intro.classList.remove('hidden');
+                messageList.classList.add('hidden');
+                messageList.innerHTML = '';
+                return;
+            }
+
+            intro.classList.add('hidden');
+            messageList.classList.remove('hidden');
+            messageList.innerHTML = '';
+
+            chat.messages.forEach((msg, idx) => {
+                appendMessageNode(msg.role, msg.content, false, idx, msg.feedback || null, msg.image || null);
+            });
+            scrollToBottom();
+        }
+
+        function toggleWebSearch() {
+            webSearchMode = !webSearchMode;
+            const ind = document.getElementById('webSearchIndicator');
+            const btn = document.getElementById('webSearchToggle');
+            if (webSearchMode) {
+                ind.className = 'w-1.5 h-1.5 rounded-full bg-green-400';
+                btn.className = 'text-xs px-2.5 py-1 rounded-md border border-neutral-700 bg-neutral-800 text-white transition-colors flex items-center space-x-1.5 cursor-pointer';
+            } else {
+                ind.className = 'w-1.5 h-1.5 rounded-full bg-neutral-600';
+                btn.className = 'text-xs px-2.5 py-1 rounded-md border border-neutral-800 bg-neutral-900 text-neutral-400 hover:text-white transition-colors flex items-center space-x-1.5 cursor-pointer';
+            }
+        }
+
+        function toggleImageGen() {
+            imageGenMode = !imageGenMode;
+            const ind = document.getElementById('imageGenIndicator');
+            const btn = document.getElementById('imageGenToggle');
+            const modelContainer = document.getElementById('imageModelContainer');
+            const input = document.getElementById('userInput');
+
+            if (imageGenMode) {
+                ind.className = 'w-1.5 h-1.5 rounded-full bg-purple-400';
+                btn.className = 'text-xs px-2.5 py-1 rounded-md border border-purple-800 bg-purple-950 text-white transition-colors flex items-center space-x-1.5 cursor-pointer';
+                modelContainer.classList.remove('hidden');
+                input.placeholder = 'Describe the image you want to generate...';
+            } else {
+                ind.className = 'w-1.5 h-1.5 rounded-full bg-neutral-600';
+                btn.className = 'text-xs px-2.5 py-1 rounded-md border border-neutral-800 bg-neutral-900 text-neutral-400 hover:text-white transition-colors flex items-center space-x-1.5 cursor-pointer';
+                modelContainer.classList.add('hidden');
+                input.placeholder = 'Type your message here or describe an image...';
+            }
+        }
+
+        function changeImageModel(val) {
+            currentImageModel = val;
+            localStorage.setItem('parasite_ai_image_model', val);
+        }
+
+        function changeMood(val) {
+            currentMood = val;
+            localStorage.setItem('parasite_ai_mood', val);
+        }
+
+        function sendPreset(text) {
+            document.getElementById('userInput').value = text;
+            autoResize(document.getElementById('userInput'));
+            sendMessage();
+        }
+
+        function handleFileSelected(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            if (!file.type.startsWith('image/')) {
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                attachedImage = {
+                    url: e.target.result,
+                    name: file.name
+                };
+                renderAttachmentPreview();
+                const input = document.getElementById('userInput');
+                input.value = '';
+                input.disabled = true;
+                input.placeholder = 'Image attached (typing disabled until sent or removed)...';
+            };
+            reader.readAsDataURL(file);
+            event.target.value = '';
+        }
+
+        function removeAttachment() {
+            attachedImage = null;
+            renderAttachmentPreview();
+            const input = document.getElementById('userInput');
+            input.disabled = false;
+            input.placeholder = imageGenMode ? 'Describe the image you want to generate...' : 'Type your message here or describe an image...';
+            input.focus();
+        }
+
+        function renderAttachmentPreview() {
+            const container = document.getElementById('attachmentPreviewContainer');
+            if (!container) return;
+            if (!attachedImage) {
+                container.classList.add('hidden');
+                container.innerHTML = '';
+                return;
+            }
+            container.classList.remove('hidden');
+            container.innerHTML = `
+                <div class="inline-flex items-center space-x-2 bg-neutral-900 border border-neutral-800 rounded-lg p-1.5 pr-3">
+                    <img src="${escapeHtml(attachedImage.url)}" alt="Attachment" class="w-10 h-10 object-cover rounded-md border border-neutral-700">
+                    <div class="flex flex-col text-left">
+                        <span class="text-xs font-medium text-white truncate max-w-[180px]">${escapeHtml(attachedImage.name)}</span>
+                        <span class="text-[10px] text-neutral-400">Attached image</span>
+                    </div>
+                    <button onclick="removeAttachment()" class="text-neutral-400 hover:text-white p-1 ml-2 cursor-pointer" title="Remove attachment">
+                        <i class="fa-solid fa-xmark text-xs"></i>
+                    </button>
+                </div>
+            `;
+        }
+
+        function handleKeydown(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+
+        function autoResize(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = Math.min(textarea.scrollHeight, 128) + 'px';
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('userInput');
+            const text = input.value.trim();
+            if (!text && !attachedImage) return;
+
+            const selfHarmKeywords = ['hurt myself', 'suicide', 'kill myself', 'end my life', 'want to die', 'self harm', 'cutting myself', 'hurt self', 'hurt me'];
+            const lowerText = text.toLowerCase();
+            const isSelfHarm = selfHarmKeywords.some(kw => lowerText.includes(kw));
+
+            if (text.toLowerCase().includes('remember')) {
+                if (!globalMemory.includes(text)) {
+                    globalMemory.push(text);
+                    localStorage.setItem('parasite_ai_global_memory', JSON.stringify(globalMemory));
+                }
+            }
+
+            const apiKey = localStorage.getItem('openrouter_api_key');
+            if (!apiKey && !isSelfHarm && !imageGenMode) {
+                openApiKeyModal();
+                return;
+            }
+
+            input.value = '';
+            input.style.height = 'auto';
+            
+            const currentImg = attachedImage;
+            attachedImage = null;
+            renderAttachmentPreview();
+            input.disabled = false;
+            input.placeholder = imageGenMode ? 'Describe the image you want to generate...' : 'Type your message here or describe an image...';
+
+            let chat;
+            if (isCurrentChatTemporary) {
+                if (!tempChatStore) {
+                    tempChatStore = { id: currentChatId, title: 'Temporary Chat', messages: [] };
+                }
+                chat = tempChatStore;
+            } else {
+                chat = chats.find(c => c.id === currentChatId);
+                if (!chat) {
+                    startNewChat();
+                    chat = chats.find(c => c.id === currentChatId);
+                }
+
+                if (chat.messages.length === 0 || chat.title === 'New Conversation') {
+                    const titleBase = text || (currentImg ? 'Image Analysis' : 'New Conversation');
+                    chat.title = titleBase.length > 28 ? titleBase.substring(0, 28) + '...' : titleBase;
+                    saveChats();
+                    renderChatHistory();
+                }
+            }
+
+            const userMsgObj = { 
+                role: 'user', 
+                content: text || (currentImg ? 'Analyze this attached image.' : ''), 
+                feedback: null 
+            };
+            if (currentImg) {
+                userMsgObj.image = currentImg.url;
+            }
+
+            chat.messages.push(userMsgObj);
+            saveChats();
+            if (!isCurrentChatTemporary) renderChatHistory();
+            
+            appendMessageNode('user', userMsgObj.content, false, chat.messages.length - 1, null, userMsgObj.image || null);
+
+            if (isSelfHarm) {
+                const crisisResponse = "I hear how much pain you're going through right now, and your life truly matters. Please know you don't have to carry this alone. If you are having thoughts of hurting yourself, please reach out for support immediately:\n\n- **Call or text 988** to reach the Suicide & Crisis Lifeline (free, confidential, and available 24/7 in the US and Canada).\n- **Text HOME to 741741** to connect with the Crisis Text Line.\n- **Call 911** or go to the nearest emergency room if you are in immediate danger.\n\nPlease talk to a trusted adult, professional, or call one of these resources right away.";
+                chat.messages.push({ role: 'assistant', content: crisisResponse, feedback: null });
+                saveChats();
+                appendMessageNode('assistant', crisisResponse, true, chat.messages.length - 1, null, null);
+                return;
+            }
+
+            if (imageGenMode) {
+                executeImageGeneration(text || 'A generated scene');
+            } else {
+                executeAIResponse();
+            }
+        }
+
+        async function executeImageGeneration(promptText) {
+            let chat = isCurrentChatTemporary ? tempChatStore : chats.find(c => c.id === currentChatId);
+            if (!chat) return;
+
+            const loadingId = appendLoadingMessage(`Synthesizing unique image with ${currentImageModel.toUpperCase()}...`);
+            document.getElementById('statusDot').className = 'w-2 h-2 rounded-full bg-purple-500 transition-colors';
+
+            try {
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
+                const encodedPrompt = encodeURIComponent(promptText);
+                const randomSeed = Math.floor(Math.random() * 100000000);
+                const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?model=${currentImageModel}&width=1024&height=1024&nologo=true&seed=${randomSeed}`;
+                
+                await new Promise((resolve, reject) => {
+                    const img = new Image();
+                    img.onload = () => resolve();
+                    img.onerror = () => reject(new Error('Failed to load generated image.'));
+                    img.src = imageUrl;
+                });
+
+                const messageContent = `[IMAGE:${imageUrl}:${promptText}]`;
+
+                removeLoadingMessage(loadingId);
+                document.getElementById('statusDot').className = 'w-2 h-2 rounded-full bg-neutral-600 transition-colors';
+                
+                chat.messages.push({ role: 'assistant', content: messageContent, feedback: null });
+                saveChats();
+                appendMessageNode('assistant', messageContent, false, chat.messages.length - 1, null);
+
+            } catch (error) {
+                removeLoadingMessage(loadingId);
+                document.getElementById('statusDot').className = 'w-2 h-2 rounded-full bg-neutral-600 transition-colors';
+                const errorMsg = `Error generating image: ${error.message}`;
+                chat.messages.push({ role: 'assistant', content: errorMsg, feedback: null });
+                saveChats();
+                appendMessageNode('assistant', errorMsg, false, chat.messages.length - 1, null);
+            }
+        }
+
+        async function executeAIResponse() {
+            let chat = isCurrentChatTemporary ? tempChatStore : chats.find(c => c.id === currentChatId);
+            if (!chat) return;
+
+            const loadingId = appendLoadingMessage();
+            document.getElementById('statusDot').className = 'w-2 h-2 rounded-full bg-orange-500 transition-colors';
+
+            try {
+                let currentSystemPrompt = baseSystemPrompt;
+                const moodInstruction = moodPrompts[currentMood] || moodPrompts['default'];
+                currentSystemPrompt += ` [MOOD INSTRUCTION: ${moodInstruction}]`;
+
+                if (globalMemory.length > 0) {
+                    currentSystemPrompt += ` [GLOBAL USER MEMORIES & PREFERENCES ACROSS ALL CHATS:\n- ${globalMemory.join('\n- ')}\n]`;
+                }
+
+                if (userFeedback.liked.length > 0 || userFeedback.disliked.length > 0) {
+                    currentSystemPrompt += ` [USER ADAPTIVE PREFERENCES (Private to this user):\n`;
+                    if (userFeedback.liked.length > 0) {
+                        currentSystemPrompt += `- Style/traits the user THUMBED UP (DO MORE OF THIS): ${userFeedback.liked.slice(-5).join(' | ')}\n`;
+                    }
+                    if (userFeedback.disliked.length > 0) {
+                        currentSystemPrompt += `- Style/traits the user THUMBED DOWN (AVOID COMPLETELY): ${userFeedback.disliked.slice(-5).join(' | ')}\n`;
+                    }
+                    currentSystemPrompt += `]`;
+                }
+
+                if (webSearchMode) {
+                    currentSystemPrompt += " [WEB SEARCH ACTIVE: Thoroughly search the web for up-to-date references, data, and answers to ensure absolute accuracy.]";
+                }
+
+                const apiMessages = [
+                    { role: 'system', content: currentSystemPrompt },
+                    ...chat.messages.map(m => {
+                        if (m.image) {
+                            return {
+                                role: m.role,
+                                content: [
+                                    { type: "text", text: m.content },
+                                    { type: "image_url", image_url: { url: m.image } }
+                                ]
+                            };
+                        }
+                        return { role: m.role, content: m.content };
+                    })
+                ];
+
+                const payload = {
+                    model: "openrouter/free",
+                    messages: apiMessages
+                };
+
+                if (webSearchMode) {
+                    payload.plugins = [{ id: "web" }];
+                }
+
+                const apiKey = localStorage.getItem('openrouter_api_key');
+                const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`,
+                        'HTTP-Referer': window.location.origin,
+                        'X-Title': 'Parasite.AI',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(errData.error?.message || `API error: ${response.status}`);
+                }
+
+                const result = await response.json();
+                const aiResponse = result.choices?.[0]?.message?.content || "No response generated.";
+
+                removeLoadingMessage(loadingId);
+                document.getElementById('statusDot').className = 'w-2 h-2 rounded-full bg-neutral-600 transition-colors';
+                chat.messages.push({ role: 'assistant', content: aiResponse, feedback: null });
+                saveChats();
+                
+                appendMessageNode('assistant', aiResponse, true, chat.messages.length - 1, null, null);
+
+            } catch (error) {
+                removeLoadingMessage(loadingId);
+                document.getElementById('statusDot').className = 'w-2 h-2 rounded-full bg-neutral-600 transition-colors';
+                const errorMsg = `Error communicating with OpenRouter API: ${error.message}`;
+                chat.messages.push({ role: 'assistant', content: errorMsg, feedback: null });
+                saveChats();
+                appendMessageNode('assistant', errorMsg, false, chat.messages.length - 1, null, null);
+            }
+        }
+
+        function formatMarkdownContent(content, imageUrl = null) {
+            let html = '';
+            if (imageUrl) {
+                html += `
+                    <div class="mb-2 rounded-xl overflow-hidden border border-neutral-800 bg-neutral-900 max-w-xs">
+                        <img src="${escapeHtml(imageUrl)}" alt="User Attachment" class="w-full h-auto object-cover max-h-48" />
+                    </div>
+                `;
+            }
+            if (content.startsWith('[IMAGE:') && content.endsWith(']')) {
+                const parts = content.slice(1, -1).split(':');
+                const url = parts.slice(1, -1).join(':');
+                const prompt = parts[parts.length - 1];
+                return html + `
+                    <div class="space-y-3">
+                        <p class="text-xs text-neutral-400">Generated image for: <span class="italic text-white">"${escapeHtml(prompt)}"</span></p>
+                        <div class="rounded-xl overflow-hidden border border-neutral-800 bg-neutral-900">
+                            <img src="${url}" alt="${escapeHtml(prompt)}" class="w-full h-auto object-cover max-h-96" onerror="this.onerror=null;this.src='https://placehold.co/600x600/111/fff?text=Image+Load+Failed';" />
+                        </div>
+                        <div class="flex items-center space-x-2 pt-1">
+                            <button onclick="downloadGeneratedImage(this)" data-url="${escapeHtml(url)}" data-prompt="${escapeHtml(prompt)}" class="bg-white hover:bg-neutral-200 text-black font-medium px-3 py-1.5 rounded-lg text-xs flex items-center space-x-1.5 transition-colors cursor-pointer">
+                                <i class="fa-solid fa-download text-[10px]"></i>
+                                <span>Download PNG</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+            return html + escapeHtml(content)
+                .replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-white">$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em class="italic text-neutral-300">$1</em>')
+                .replace(/```([\s\S]*?)```/g, '<pre class="bg-neutral-900 border border-neutral-800 p-3 rounded-lg my-2 overflow-x-auto text-xs text-neutral-200 font-mono"><code>$1</code></pre>')
+                .replace(/`([^`]+)`/g, '<code class="bg-neutral-900 px-1 py-0.5 rounded text-xs text-neutral-200 font-mono">$1</code>')
+                .replace(/\n/g, '<br>');
+        }
+
+        async function downloadImage(url, prompt) {
+            try {
+                const response = await fetch(url);
+                const blob = await response.blob();
+                const blobUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = blobUrl;
+                a.download = (prompt ? prompt.substring(0, 30).replace(/[^a-z0-9]/gi, '_').toLowerCase() : 'generated_image') + '.png';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(blobUrl);
+            } catch (err) {
+                window.open(url, '_blank');
+            }
+        }
+
+        async function downloadGeneratedImage(btn) {
+            const url = btn.getAttribute('data-url');
+            const prompt = btn.getAttribute('data-prompt');
+            await downloadImage(url, prompt);
+        }
+
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+        }
+
+        function appendMessageNode(role, content, animate = false, messageIndex = null, initialFeedback = null, imageUrl = null) {
+            const messageList = document.getElementById('messageList');
+            const isUser = role === 'user';
+
+            const wrapper = document.createElement('div');
+            wrapper.className = `flex space-x-3 group/msg ${isUser ? 'justify-end' : 'justify-start'}`;
+
+            if (!isUser) {
+                const avatar = document.createElement('div');
+                avatar.className = 'w-2.5 h-2.5 rounded-full bg-white shrink-0 mt-2';
+                wrapper.appendChild(avatar);
+            }
+
+            const containerDiv = document.createElement('div');
+            containerDiv.className = `max-w-[85%] ${isUser ? 'flex flex-col items-end' : 'w-full'}`;
+
+            const bubble = document.createElement('div');
+            bubble.className = `rounded-2xl px-4 py-3 text-sm leading-relaxed ${isUser ? 'bg-neutral-800 text-white rounded-br-xs' : 'bg-neutral-950 border border-neutral-800 text-neutral-200 rounded-bl-xs w-full'}`;
+
+            containerDiv.appendChild(bubble);
+            wrapper.appendChild(containerDiv);
+            messageList.appendChild(wrapper);
+
+            if (isUser || !animate || content.startsWith('[IMAGE:')) {
+                bubble.innerHTML = formatMarkdownContent(content, imageUrl);
+                appendMessageActions(containerDiv, role, content, messageIndex, isUser, initialFeedback);
+                scrollToBottom();
+            } else {
+                let charIndex = 0;
+                const speed = 8;
+                const chunkSize = 20;
+                
+                function typeNextChunk() {
+                    charIndex = Math.min(content.length, charIndex + chunkSize);
+                    const currentSubstring = content.substring(0, charIndex);
+                    bubble.innerHTML = formatMarkdownContent(currentSubstring, imageUrl);
+                    scrollToBottom();
+                    
+                    if (charIndex < content.length) {
+                        setTimeout(typeNextChunk, speed);
+                    } else {
+                        bubble.innerHTML = formatMarkdownContent(content, imageUrl);
+                        appendMessageActions(containerDiv, role, content, messageIndex, false, initialFeedback);
+                        scrollToBottom();
+                    }
+                }
+                typeNextChunk();
+            }
+        }
+
+        function appendMessageActions(containerDiv, role, content, messageIndex, isUser, initialFeedback) {
+            if (containerDiv.querySelector('.msg-actions')) return;
+
+            const actionsBar = document.createElement('div');
+            actionsBar.className = `msg-actions flex items-center space-x-2 mt-1.5 text-xs text-neutral-400 ${isUser ? 'justify-end' : 'justify-start'}`;
+
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'flex items-center space-x-1 hover:text-white transition-colors bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-800 px-2 py-1 rounded-md cursor-pointer';
+            copyBtn.innerHTML = '<i class="fa-solid fa-copy text-[10px]"></i><span>Copy</span>';
+            copyBtn.onclick = () => copyText(content, copyBtn);
+            actionsBar.appendChild(copyBtn);
+
+            if (isUser && messageIndex !== null) {
+                const editBtn = document.createElement('button');
+                editBtn.className = 'flex items-center space-x-1 hover:text-white transition-colors bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-800 px-2 py-1 rounded-md cursor-pointer';
+                editBtn.innerHTML = '<i class="fa-solid fa-pen text-[10px]"></i><span>Edit</span>';
+                editBtn.onclick = () => startEditMessage(messageIndex);
+                actionsBar.appendChild(editBtn);
+            }
+
+            if (!isUser && messageIndex !== null) {
+                const retryBtn = document.createElement('button');
+                retryBtn.className = 'flex items-center space-x-1 hover:text-white transition-colors bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-800 px-2 py-1 rounded-md cursor-pointer';
+                retryBtn.innerHTML = '<i class="fa-solid fa-rotate-right text-[10px]"></i><span>Retry</span>';
+                retryBtn.onclick = () => retryMessage(messageIndex);
+                actionsBar.appendChild(retryBtn);
+
+                const thumbUpBtn = document.createElement('button');
+                const isLiked = initialFeedback === 'up';
+                thumbUpBtn.className = `flex items-center space-x-1 transition-colors bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-800 px-2 py-1 rounded-md cursor-pointer ${isLiked ? 'text-green-400 border-green-800/60' : 'hover:text-white'}`;
+                thumbUpBtn.innerHTML = `<i class="${isLiked ? 'fa-solid' : 'fa-regular'} fa-thumbs-up text-[10px]"></i><span>Helpful</span>`;
+                thumbUpBtn.onclick = () => handleFeedback(messageIndex, 'up', thumbUpBtn, thumbDownBtn, content);
+
+                const thumbDownBtn = document.createElement('button');
+                const isDisliked = initialFeedback === 'down';
+                thumbDownBtn.className = `flex items-center space-x-1 transition-colors bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-800 px-2 py-1 rounded-md cursor-pointer ${isDisliked ? 'text-red-400 border-red-800/60' : 'hover:text-white'}`;
+                thumbDownBtn.innerHTML = `<i class="${isDisliked ? 'fa-solid' : 'fa-regular'} fa-thumbs-down text-[10px]"></i><span>Avoid</span>`;
+                thumbDownBtn.onclick = () => handleFeedback(messageIndex, 'down', thumbUpBtn, thumbDownBtn, content);
+
+                actionsBar.appendChild(thumbUpBtn);
+                actionsBar.appendChild(thumbDownBtn);
+            }
+
+            containerDiv.appendChild(actionsBar);
+        }
+
+        function handleFeedback(messageIndex, type, upBtn, downBtn, content) {
+            let chat = isCurrentChatTemporary ? tempChatStore : chats.find(c => c.id === currentChatId);
+            if (!chat || !chat.messages[messageIndex]) return;
+
+            const currentFeedback = chat.messages[messageIndex].feedback;
+            const snippet = content.length > 120 ? content.substring(0, 120) + '...' : content;
+
+            if (currentFeedback === type) {
+                chat.messages[messageIndex].feedback = null;
+                if (type === 'up') {
+                    userFeedback.liked = userFeedback.liked.filter(item => item !== snippet);
+                } else {
+                    userFeedback.disliked = userFeedback.disliked.filter(item => item !== snippet);
+                }
+            } else {
+                chat.messages[messageIndex].feedback = type;
+                if (type === 'up') {
+                    if (!userFeedback.liked.includes(snippet)) userFeedback.liked.push(snippet);
+                    userFeedback.disliked = userFeedback.disliked.filter(item => item !== snippet);
+                } else {
+                    if (!userFeedback.disliked.includes(snippet)) userFeedback.disliked.push(snippet);
+                    userFeedback.liked = userFeedback.liked.filter(item => item !== snippet);
+                }
+            }
+
+            saveChats();
+            localStorage.setItem('parasite_ai_feedback', JSON.stringify(userFeedback));
+
+            const updatedFeedback = chat.messages[messageIndex].feedback;
+            upBtn.className = `flex items-center space-x-1 transition-colors bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-800 px-2 py-1 rounded-md cursor-pointer ${updatedFeedback === 'up' ? 'text-green-400 border-green-800/60' : 'hover:text-white'}`;
+            upBtn.querySelector('i').className = `${updatedFeedback === 'up' ? 'fa-solid' : 'fa-regular'} fa-thumbs-up text-[10px]`;
+
+            downBtn.className = `flex items-center space-x-1 transition-colors bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-800 px-2 py-1 rounded-md cursor-pointer ${updatedFeedback === 'down' ? 'text-red-400 border-red-800/60' : 'hover:text-white'}`;
+            downBtn.querySelector('i').className = `${updatedFeedback === 'down' ? 'fa-solid' : 'fa-regular'} fa-thumbs-down text-[10px]`;
+        }
+
+        function copyText(text, btn) {
+            const cleanText = text.startsWith('[IMAGE:') ? 'Image URL: ' + text.split(':')[1] : text;
+            const textArea = document.createElement("textarea");
+            textArea.value = cleanText;
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                const origHTML = btn.innerHTML;
+                btn.innerHTML = '<i class="fa-solid fa-check text-[10px]"></i><span>Copied</span>';
+                setTimeout(() => { btn.innerHTML = origHTML; }, 2000);
+            } catch (err) {
+                console.error('Failed to copy', err);
+            }
+            document.body.removeChild(textArea);
+        }
+
+        function startEditMessage(messageIndex) {
+            let chat = isCurrentChatTemporary ? tempChatStore : chats.find(c => c.id === currentChatId);
+            if (!chat || !chat.messages[messageIndex]) return;
+
+            const originalContent = chat.messages[messageIndex].content;
+            renderActiveChat();
+
+            const messageList = document.getElementById('messageList');
+            const msgWrappers = messageList.children;
+            if (msgWrappers[messageIndex]) {
+                const bubble = msgWrappers[messageIndex].querySelector('.rounded-2xl');
+                if (bubble) {
+                    bubble.className = 'rounded-2xl p-3 text-sm bg-neutral-900 border border-neutral-700 w-full';
+                    bubble.innerHTML = `
+                        <textarea id="editInput_${messageIndex}" class="w-full bg-neutral-950 text-white text-sm p-2 rounded-lg border border-neutral-800 focus:outline-none focus:border-white resize-none" rows="2">${escapeHtml(originalContent)}</textarea>
+                        <div class="flex justify-end space-x-2 mt-2">
+                            <button onclick="renderActiveChat()" class="px-3 py-1 bg-neutral-800 hover:bg-neutral-700 rounded text-xs text-neutral-300 cursor-pointer">Cancel</button>
+                            <button onclick="saveEditMessage(${messageIndex})" class="px-3 py-1 bg-white hover:bg-neutral-200 text-black font-medium rounded text-xs cursor-pointer">Save & Submit</button>
+                        </div>
+                    `;
+                    const ta = document.getElementById(`editInput_${messageIndex}`);
+                    if (ta) {
+                        ta.focus();
+                        ta.setSelectionRange(ta.value.length, ta.value.length);
+                    }
+                }
+            }
+        }
+
+        function saveEditMessage(messageIndex) {
+            const ta = document.getElementById(`editInput_${messageIndex}`);
+            if (!ta) return;
+            const newContent = ta.value.trim();
+            if (!newContent) return;
+
+            let chat = isCurrentChatTemporary ? tempChatStore : chats.find(c => c.id === currentChatId);
+            if (!chat) return;
+
+            chat.messages = chat.messages.slice(0, messageIndex);
+            chat.messages.push({ role: 'user', content: newContent });
+            saveChats();
+            if (!isCurrentChatTemporary) renderChatHistory();
+            renderActiveChat();
+
+            if (imageGenMode) {
+                executeImageGeneration(newContent);
+            } else {
+                executeAIResponse();
+            }
+        }
+
+        function retryMessage(messageIndex) {
+            let chat = isCurrentChatTemporary ? tempChatStore : chats.find(c => c.id === currentChatId);
+            if (!chat) return;
+
+            const userMsg = chat.messages[messageIndex - 1]?.content;
+            chat.messages = chat.messages.slice(0, messageIndex);
+            saveChats();
+            renderActiveChat();
+
+            if (imageGenMode && userMsg) {
+                executeImageGeneration(userMsg);
+            } else {
+                executeAIResponse();
+            }
+        }
+
+        function appendLoadingMessage(customText = 'Thinking...') {
+            const messageList = document.getElementById('messageList');
+            document.getElementById('introScreen').classList.add('hidden');
+            messageList.classList.remove('hidden');
+
+            const loadingId = 'loading_' + Date.now();
+            const wrapper = document.createElement('div');
+            wrapper.id = loadingId;
+            wrapper.className = 'flex space-x-3 justify-start';
+
+            const avatar = document.createElement('div');
+            avatar.className = 'w-2.5 h-2.5 rounded-full bg-white shrink-0 mt-2 animate-pulse';
+            wrapper.appendChild(avatar);
+
+            const bubble = document.createElement('div');
+            bubble.className = 'max-w-[85%] rounded-2xl px-4 py-3 text-sm bg-neutral-950 border border-neutral-800 text-neutral-300 rounded-bl-xs flex items-center space-x-3';
+            
+            bubble.innerHTML = `
+                <div class="relative flex items-center justify-center w-5 h-5">
+                    <div class="absolute w-full h-full rounded-full bg-white/20 animate-ping"></div>
+                    <div class="w-2.5 h-2.5 rounded-full bg-white"></div>
+                </div>
+                <span class="text-xs font-medium text-neutral-200 tracking-wide animate-pulse">${customText}</span>
+            `;
+
+            wrapper.appendChild(bubble);
+            messageList.appendChild(wrapper);
+            scrollToBottom();
+            return loadingId;
+        }
+
+        function removeLoadingMessage(loadingId) {
+            const el = document.getElementById(loadingId);
+            if (el) el.remove();
+        }
+
+        function scrollToBottom() {
+            const container = document.getElementById('chatContainer');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('-translate-x-full');
+        }
+    </script>
+</body>
+</html>
