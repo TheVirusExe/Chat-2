@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Parasite.AI - Conversational Assistant</title>
+    <title>Parasite Studio's - Conversational Assistant</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -14,6 +14,71 @@
         ::-webkit-scrollbar-track { background: #000000; }
         ::-webkit-scrollbar-thumb { background: #333333; border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: #555555; }
+        .player-bar {
+            position: fixed;
+            right: 18px;
+            bottom: 18px;
+            border-radius: 18px;
+            will-change: transform, width, height, left, top;
+            transition:
+                width .42s cubic-bezier(.22, 1, .36, 1),
+                height .42s cubic-bezier(.22, 1, .36, 1),
+                padding .42s cubic-bezier(.22, 1, .36, 1),
+                border-radius .42s cubic-bezier(.22, 1, .36, 1),
+                transform .46s cubic-bezier(.22, 1, .36, 1),
+                opacity .28s ease;
+        }
+        .player-bar.player-bar-expanded {
+            left: 18px;
+            right: 18px;
+            bottom: 0;
+            border-radius: 16px 16px 0 0;
+            position: absolute;
+            min-height: 76px;
+        }
+        .player-bar.player-bar-mini {
+            width: min(360px, calc(100vw - 28px));
+            min-height: 64px;
+            height: 64px;
+            padding: 8px 12px 8px 8px;
+            right: 14px;
+            bottom: 80px;
+            border-radius: 16px;
+        }
+        .player-bar.player-bar-mini .player-controls {
+            width: auto;
+            max-width: none;
+            flex-direction: row;
+            margin-left: auto;
+        }
+        .player-bar.player-bar-mini .player-timeline,
+        .player-bar.player-bar-mini .player-secondary-control,
+        .player-bar.player-bar-mini .player-volume {
+            display: none !important;
+        }
+        .player-bar.player-bar-mini #playerDragHandle {
+            min-width: 0;
+            width: calc(100% - 56px);
+        }
+        .player-bar.player-bar-mini #playerAlbumArt {
+            width: 44px;
+            height: 44px;
+        }
+        .player-bar.dragging {
+            transition: none !important;
+            cursor: grabbing;
+        }
+        @media (max-width: 768px) {
+            .player-bar.player-bar-expanded {
+                left: 8px;
+                right: 8px;
+            }
+            .player-bar.player-bar-mini {
+                width: min(340px, calc(100vw - 20px));
+                right: 10px;
+                bottom: 76px;
+            }
+        }
         @keyframes pulse-slow { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
         .animate-pulse-slow { animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
     </style>
@@ -23,7 +88,7 @@
     <aside id="sidebar" class="w-72 bg-neutral-950 border-r border-neutral-800 flex flex-col transition-all duration-300 z-20 md:relative absolute h-full -translate-x-full md:translate-x-0">
         <div class="p-4 border-b border-neutral-800 flex items-center justify-between">
             <div onclick="startNewChat()" class="flex items-center space-x-2.5 cursor-pointer group">
-                <span class="font-extrabold tracking-widest text-sm">PARASITE.AI</span>
+                <span class="font-extrabold tracking-widest text-sm">PARASITE STUDIO'S</span>
             </div>
             <button onclick="toggleSidebar()" class="md:hidden text-neutral-400 hover:text-white p-1 cursor-pointer">
                 <i class="fa-solid fa-xmark"></i>
@@ -35,6 +100,14 @@
                 <button onclick="startNewChat()" class="w-full bg-white text-black hover:bg-neutral-200 transition-colors font-medium py-2.5 px-3 rounded-lg flex items-center justify-center space-x-1.5 text-xs shadow-sm cursor-pointer">
                     <i class="fa-solid fa-plus text-[10px]"></i>
                     <span>New Chat</span>
+                </button>
+                <button onclick="switchView('music')" id="musicNavBtn" class="w-full bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 transition-colors font-medium py-2 px-3 rounded-lg flex items-center justify-center space-x-1.5 text-xs cursor-pointer">
+                    <i class="fa-solid fa-music text-[10px]"></i>
+                    <span>Music Stream</span>
+                </button>
+                <button onclick="switchView('games')" id="gamesNavBtn" class="w-full bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 transition-colors font-medium py-2 px-3 rounded-lg flex items-center justify-center space-x-1.5 text-xs cursor-pointer">
+                    <i class="fa-solid fa-gamepad text-[10px]"></i>
+                    <span>Games</span>
                 </button>
             </div>
             <button onclick="openApiKeyModal()" class="w-full bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 transition-colors font-medium py-2 px-3 rounded-lg flex items-center justify-center space-x-2 text-xs cursor-pointer">
@@ -70,12 +143,112 @@
             </div>
         </header>
 
+        <canvas id="musicCanvas" aria-hidden="true" class="fixed inset-0 pointer-events-none opacity-0"></canvas>
+
+         <div id="musicSection" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 hidden">
+            <div class="max-w-4xl mx-auto space-y-6">
+                <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div class="flex items-center space-x-3 w-full md:w-auto">
+                        <button onclick="switchView('chat')" class="bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-200 hover:text-white px-3 py-2 rounded-xl text-xs flex items-center space-x-2 transition-colors cursor-pointer shrink-0">
+                            <i class="fa-solid fa-arrow-left text-xs"></i>
+                            <span>Back to Chat</span>
+                        </button>
+                        <div>
+                            <h1 class="text-xl font-bold tracking-tight text-white">Music Stream</h1>
+                            <p class="text-xs text-neutral-400">Search and stream music available across the catalog.</p>
+                        </div>
+                    </div>
+                    <div class="relative w-full md:w-72">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-neutral-500">
+                            <i class="fa-solid fa-search text-xs"></i>
+                        </span>
+                        <input type="text" id="musicSearchInput" onkeydown="handleMusicSearchKeydown(event)" placeholder="Search tracks, artists..." class="w-full bg-neutral-900 border border-neutral-800 rounded-xl pl-8 pr-3 py-2 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-white transition-colors">
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-2 overflow-x-auto pb-2 scrollbar-none" id="genreTagsContainer">
+                    <button onclick="filterByGenre('all', this)" class="genre-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-black shrink-0 transition-colors cursor-pointer">All Music</button>
+                    <button onclick="filterByGenre('rock', this)" class="genre-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 shrink-0 transition-colors cursor-pointer">Rock</button>
+                    <button onclick="filterByGenre('electronic', this)" class="genre-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 shrink-0 transition-colors cursor-pointer">Electronic</button>
+                    <button onclick="filterByGenre('jerseyclub', this)" class="genre-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 shrink-0 transition-colors cursor-pointer">Jersey Club</button>
+                    <button onclick="filterByGenre('pop', this)" class="genre-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 shrink-0 transition-colors cursor-pointer">Pop</button>
+                    <button onclick="filterByGenre('hiphop', this)" class="genre-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 shrink-0 transition-colors cursor-pointer">Hip Hop</button>
+                    <button onclick="filterByGenre('jazz', this)" class="genre-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 shrink-0 transition-colors cursor-pointer">Jazz</button>
+                    <button onclick="filterByGenre('classical', this)" class="genre-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 shrink-0 transition-colors cursor-pointer">Classical</button>
+                    <button onclick="filterByGenre('ambient', this)" class="genre-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 shrink-0 transition-colors cursor-pointer">Ambient</button>
+                    <button onclick="filterByGenre('metal', this)" class="genre-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 shrink-0 transition-colors cursor-pointer">Metal</button>
+                </div>
+
+                <div id="musicLoadingState" class="hidden text-center py-12 space-y-3">
+                    <div class="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>
+                    <p class="text-xs text-neutral-400">Loading music...</p>
+                </div>
+
+                <div id="musicTracksGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pb-24">
+                </div>
+            </div>
+        </div>
+
+        <div id="gamesSection" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 hidden">
+            <div class="max-w-6xl mx-auto space-y-5">
+                <div class="flex items-center justify-between gap-3">
+                    <div class="flex items-center space-x-3">
+                        <button onclick="switchView('chat')" class="bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-200 hover:text-white px-3 py-2 rounded-xl text-xs flex items-center space-x-2 transition-colors cursor-pointer shrink-0">
+                            <i class="fa-solid fa-arrow-left text-xs"></i>
+                            <span>Back to Chat</span>
+                        </button>
+                        <div>
+                            <h1 class="text-xl font-bold tracking-tight text-white">Games</h1>
+                            <p class="text-xs text-neutral-400">Play browser games directly here.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <button onclick="openGame('fnaf')" class="text-left bg-neutral-950 border border-neutral-900 hover:border-neutral-700 rounded-2xl p-3 transition-colors group cursor-pointer">
+                        <div class="relative aspect-video rounded-xl overflow-hidden bg-neutral-900 border border-neutral-800">
+                            <img src="https://fnafgames.io/upload/imgs/fnaf-games.jpg" alt="FNAF Games" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onerror="this.onerror=null;this.src='https://placehold.co/640x360/111/fff?text=FNAF';">
+                            <div class="absolute inset-0 bg-black/45 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <span class="w-12 h-12 rounded-full bg-white text-black flex items-center justify-center shadow-lg">
+                                    <i class="fa-solid fa-play"></i>
+                                </span>
+                            </div>
+                        </div>
+                        <div class="pt-3 flex items-center justify-between gap-3">
+                            <div>
+                                <h3 class="text-sm font-bold text-white">FNAF</h3>
+                                <p class="text-[11px] text-neutral-400 mt-0.5">Five Nights At Freddy's</p>
+                            </div>
+                            <i class="fa-solid fa-arrow-up-right-from-square text-[10px] text-neutral-500"></i>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="gamePlayerSection" class="fixed inset-0 bg-black z-30 hidden">
+            <div class="h-14 border-b border-neutral-900 bg-black flex items-center justify-between px-4">
+                <div class="flex items-center space-x-3 min-w-0">
+                    <button onclick="closeGame()" class="bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-200 hover:text-white px-3 py-2 rounded-xl text-xs flex items-center space-x-2 transition-colors cursor-pointer shrink-0">
+                        <i class="fa-solid fa-arrow-left text-xs"></i>
+                        <span>Back to Games</span>
+                    </button>
+                    <span class="text-sm font-medium text-white truncate">FNAF</span>
+                </div>
+                <a href="https://fnafgames.io/" target="_blank" rel="noopener noreferrer" class="text-xs text-neutral-400 hover:text-white transition-colors flex items-center space-x-1.5">
+                    <span>Open Site</span>
+                    <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                </a>
+            </div>
+            <iframe id="gameFrame" src="about:blank" title="FNAF" class="w-full h-[calc(100%-3.5rem)] border-0 bg-black" allow="autoplay; fullscreen; gamepad" allowfullscreen></iframe>
+        </div>
+
         <div id="chatContainer" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
             <div id="introScreen" class="h-full flex flex-col items-center justify-center max-w-xl mx-auto text-center space-y-6">
                 <div class="space-y-2">
-                    <h1 class="text-2xl font-bold tracking-tight">Parasite.AI</h1>
+                    <h1 class="text-2xl font-bold tracking-tight">Parasite Studio's</h1>
                     <p class="text-sm text-neutral-400 leading-relaxed">
-                        Your advanced conversational companion and assistant with Web Search & Free Image Generation.
+                        Your advanced conversational companion with Web Search & Superior AI Image Generation.
                     </p>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3 w-full text-left text-xs">
@@ -84,8 +257,8 @@
                         <p class="text-neutral-400">Ask questions, explore concepts, and brainstorm ideas effortlessly.</p>
                     </div>
                     <div class="bg-neutral-950 border border-neutral-900 p-3 rounded-xl">
-                        <div class="font-semibold text-white mb-1">Free Image Generation</div>
-                        <p class="text-neutral-400">Generate custom artwork instantly as PNG for free (10 uses / 5h cooldown).</p>
+                        <div class="font-semibold text-white mb-1">Pro Image Studio</div>
+                        <p class="text-neutral-400">Generate crisp, photorealistic artwork with smart prompt expansion and zero distortion.</p>
                     </div>
                 </div>
                 <div class="flex flex-wrap justify-center gap-2 pt-2">
@@ -95,8 +268,8 @@
                     <button onclick="sendPreset('Tell me an interesting historical event and why it matters')" class="text-xs bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 px-3 py-2 rounded-lg text-neutral-300 transition-colors cursor-pointer">
                         Historical Deep Dive
                     </button>
-                    <button onclick="sendPreset('A futuristic cyberpunk city at night with neon lights')" class="text-xs bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 px-3 py-2 rounded-lg text-neutral-300 transition-colors cursor-pointer">
-                        ✨ Generate Cyberpunk City
+                    <button onclick="sendPreset('A majestic cybernetic owl perched on a neon-lit Tokyo rooftop at twilight')" class="text-xs bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 px-3 py-2 rounded-lg text-neutral-300 transition-colors cursor-pointer">
+                        ✨ Generate Cybernetic Owl
                     </button>
                 </div>
             </div>
@@ -107,8 +280,8 @@
 
         <div class="p-4 bg-black border-t border-neutral-900">
             <div class="max-w-3xl mx-auto relative">
-                <div class="flex items-center justify-between mb-2 px-1">
-                    <div class="flex items-center space-x-2">
+                <div class="flex items-center justify-between mb-2 px-1 flex-wrap gap-2">
+                    <div class="flex items-center space-x-2 flex-wrap gap-y-2">
                         <button id="webSearchToggle" onclick="toggleWebSearch()" class="text-xs px-2.5 py-1 rounded-md border border-neutral-800 bg-neutral-900 text-neutral-400 hover:text-white transition-colors flex items-center space-x-1.5 cursor-pointer">
                             <span id="webSearchIndicator" class="w-1.5 h-1.5 rounded-full bg-neutral-600"></span>
                             <span>Web Search</span>
@@ -117,12 +290,16 @@
                             <span id="imageGenIndicator" class="w-1.5 h-1.5 rounded-full bg-neutral-600"></span>
                             <span id="imageGenLabel">Image Generator</span>
                         </button>
-                        <div id="imageModelContainer" class="hidden">
+                        <div id="imageModelContainer" class="hidden flex items-center space-x-2">
                             <select id="imageModelSelector" onchange="changeImageModel(this.value)" class="bg-neutral-900 border border-neutral-800 rounded-md px-2.5 py-1 text-xs text-neutral-300 focus:outline-none focus:border-neutral-600 cursor-pointer">
-                                <option value="flux">Model: Flux (Cinematic & HD)</option>
-                                <option value="turbo">Model: Turbo (Ultra Fast)</option>
-                                <option value="deliberate">Model: Deliberate (Detailed Art)</option>
-                                <option value="any-dark">Model: Any Dark (Moody & Artistic)</option>
+                                <option value="flux">Model: Flux Pro (Ultra Realistic)</option>
+                                <option value="flux-realism">Model: Flux Realism (Photographic)</option>
+                                <option value="turbo">Model: Turbo Fast (Creative Art)</option>
+                            </select>
+                            <select id="imageAspectRatioSelector" onchange="changeAspectRatio(this.value)" class="bg-neutral-900 border border-neutral-800 rounded-md px-2.5 py-1 text-xs text-neutral-300 focus:outline-none focus:border-neutral-600 cursor-pointer">
+                                <option value="1:1">Square (1:1)</option>
+                                <option value="16:9">Landscape (16:9)</option>
+                                <option value="9:16">Portrait (9:16)</option>
                             </select>
                         </div>
                     </div>
@@ -141,6 +318,38 @@
                     </button>
                 </div>
             </div>
+        </div>
+
+        <div id="persistentPlayerBar" class="hidden player-bar player-bar-expanded bg-neutral-950 border border-neutral-800 px-4 py-3 z-40 items-center justify-between gap-4 shadow-2xl">
+            <div id="playerDragHandle" class="flex items-center space-x-3 w-1/4 min-w-[180px] cursor-grab active:cursor-grabbing select-none touch-none">
+                <img id="playerAlbumArt" src="https://placehold.co/100x100/111/fff?text=No+Track" alt="Album Art" class="w-11 h-11 rounded-lg object-cover border border-neutral-800 shrink-0">
+                <div class="truncate">
+                    <h4 id="playerTrackTitle" class="text-xs font-bold text-white truncate">Select a track</h4>
+                    <p id="playerArtistName" class="text-[11px] text-neutral-400 truncate">Music</p>
+                </div>
+            </div>
+
+            <div class="player-controls flex flex-col items-center space-y-1 w-2/4 max-w-md">
+                <div class="flex items-center space-x-4">
+                    <button onclick="playPrevTrack()" title="Previous Track" class="text-neutral-400 hover:text-white cursor-pointer player-secondary-control"><i class="fa-solid fa-backward-step text-sm"></i></button>
+                    <button id="playerPlayPauseBtn" onclick="togglePlayPause()" title="Play / Pause" class="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center hover:bg-neutral-200 transition-colors cursor-pointer"><i class="fa-solid fa-play text-xs"></i></button>
+                    <button onclick="playNextTrack()" title="Next Track" class="text-neutral-400 hover:text-white cursor-pointer player-secondary-control"><i class="fa-solid fa-forward-step text-sm"></i></button>
+                </div>
+                <div class="flex items-center space-x-2 w-full text-[10px] text-neutral-400 font-mono player-timeline">
+                    <span id="currentTimeLabel">0:00</span>
+                    <input type="range" id="trackSeekBar" value="0" min="0" max="100" oninput="seekTrack(this.value)" class="w-full accent-white h-1 bg-neutral-800 rounded-lg cursor-pointer">
+                    <span id="durationLabel">0:00</span>
+                </div>
+            </div>
+
+            <div class="player-volume hidden md:flex items-center space-x-2 w-1/4 justify-end text-neutral-400">
+                <i class="fa-solid fa-volume-high text-xs"></i>
+                <input type="range" id="volumeSlider" min="0" max="1" step="0.05" value="1" oninput="adjustVolume(this.value)" class="w-20 accent-white h-1 bg-neutral-800 rounded-lg cursor-pointer">
+            </div>
+
+            <button id="playerCloseBtn" onclick="closePlayerBar(event)" title="Hide player" class="absolute top-2 right-2 text-neutral-500 hover:text-white w-6 h-6 rounded-md hover:bg-neutral-800 flex items-center justify-center cursor-pointer">
+                <i class="fa-solid fa-xmark text-xs"></i>
+            </button>
         </div>
     </main>
 
@@ -187,18 +396,18 @@
                             <p class="text-[11px] text-neutral-400">Get notified when AI finishes generating a response.</p>
                         </div>
                         <button id="notificationToggleBtn" onclick="toggleNotifications()" class="w-10 h-6 bg-neutral-800 rounded-full transition-colors relative p-1 cursor-pointer">
-                            <div id="notificationToggleThumb" class="w-4 h-4 bg-neutral-400 rounded-full transition-transform"></div>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="border-t border-neutral-900 pt-4">
-                    <div class="flex items-center justify-between mb-2">
-                        <label class="block text-xs font-medium text-neutral-300">Global Memory ("Remember this")</label>
-                        <button onclick="deleteAllMemory()" class="text-[11px] text-red-400 hover:text-red-300 transition-colors cursor-pointer">Delete All Memory</button>
-                    </div>
-                    <p class="text-[11px] text-neutral-400 mb-3">Anything you ask Parasite.AI to remember across chats is stored here automatically.</p>
-                    <div id="globalMemoryList" class="space-y-2 max-h-40 overflow-y-auto bg-neutral-900/50 border border-neutral-900 rounded-xl p-2.5">
+                    <div id="imageModelContainer" class="hidden flex items-center space-x-2 flex-wrap">
+                        <select id="imageModelSelector" onchange="changeImageModel(this.value)" class="bg-neutral-900 border border-neutral-800 rounded-md px-2.5 py-1 text-xs text-neutral-300 focus:outline-none focus:border-neutral-600 cursor-pointer">
+                            <option value="flux">Model: Flux (Latest Best Quality)</option>
+                            <option value="flux-realism">Model: Flux Realism</option>
+                            <option value="turbo">Model: Turbo Fast</option>
+                        </select>
+                        <select id="imageAspectRatioSelector" onchange="changeAspectRatio(this.value)" class="bg-neutral-900 border border-neutral-800 rounded-md px-2.5 py-1 text-xs text-neutral-300 focus:outline-none focus:border-neutral-600 cursor-pointer">
+                            <option value="1:1">Square (1080x1080)</option>
+                            <option value="16:9">Landscape (1920x1080)</option>
+                            <option value="9:16">Portrait (1080x1920)</option>
+                        </select>
+                        <input type="text" id="negativePromptInput" placeholder="Exclude (e.g. blurry, deformed)..." class="bg-neutral-900 border border-neutral-800 rounded-md px-2.5 py-1 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-purple-600 w-44">
                     </div>
                 </div>
             </div>
@@ -224,8 +433,8 @@
         let chats = JSON.parse(localStorage.getItem('parasite_ai_chats') || '[]');
         let globalMemory = JSON.parse(localStorage.getItem('parasite_ai_global_memory') || '[]');
         let userFeedback = JSON.parse(localStorage.getItem('parasite_ai_feedback') || '{"liked": [], "disliked": []}');
-        let imageGenUsage = JSON.parse(localStorage.getItem('parasite_ai_image_usage') || '{"count": 0, "lockUntil": 0}');
         let currentImageModel = localStorage.getItem('parasite_ai_image_model') || 'flux';
+        let currentAspectRatio = localStorage.getItem('parasite_ai_aspect_ratio') || '1:1';
         let notificationsEnabled = localStorage.getItem('parasite_ai_notifications') === 'true';
         let currentChatId = null;
         let webSearchMode = false;
@@ -237,10 +446,557 @@
         let isGenerating = false;
         let currentTypewriterTimeout = null;
 
-        const baseSystemPrompt = "You are Parasite.AI, an advanced, highly capable, and witty conversational AI assistant. You provide concise, engaging, and accurate responses. You can write code, analyze topics, and help with creative tasks.";
+        let musicTracks = [];
+        let currentTrackIndex = 0;
+        let audioPlayer = new Audio();
+        let isMusicPlaying = false;
+        let activeGenre = 'all';
+        let musicOffset = 0;
+        let musicHasMore = true;
+        let musicRequestId = 0;
+        let playerClosed = false;
+        let playerIsMini = false;
+        let playerDragState = null;
+        const AUDIUS_API_KEY = '0x35830d0b224f2d082d956db9dd4df05e5821d2d5';
+        const AUDIUS_API_BASE = 'https://api.audius.co/v1';
+        let nextTrackPreloader = null;
+
+        const baseSystemPrompt = "You are Parasite Studio's an advanced, highly capable, and witty conversational AI assistant. You provide concise, engaging, and accurate responses. You can write code, analyze topics, and help with creative tasks.";
+
+        function switchView(viewName) {
+            const chatCont = document.getElementById('chatContainer');
+            const musicCont = document.getElementById('musicSection');
+            const gamesCont = document.getElementById('gamesSection');
+            const musicNavBtn = document.getElementById('musicNavBtn');
+            const gamesNavBtn = document.getElementById('gamesNavBtn');
+            const chatInputArea = document.querySelector('.p-4.bg-black.border-t');
+            const playerBar = document.getElementById('persistentPlayerBar');
+
+            if (viewName === 'music') {
+                chatCont.classList.add('hidden');
+                gamesCont.classList.add('hidden');
+                musicCont.classList.remove('hidden');
+                chatInputArea.classList.add('hidden');
+
+                document.getElementById('headerTitle').innerText = 'Music Stream';
+                musicNavBtn.className = 'w-full bg-white text-black font-medium py-2 px-3 rounded-lg flex items-center justify-center space-x-1.5 text-xs shadow-sm cursor-pointer';
+                gamesNavBtn.className = 'w-full bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 transition-colors font-medium py-2 px-3 rounded-lg flex items-center justify-center space-x-1.5 text-xs cursor-pointer';
+
+                if (playerBar && audioPlayer.src && !playerClosed) {
+                    setPlayerMode(false);
+                    playerBar.classList.remove('hidden');
+                }
+
+                if (musicTracks.length === 0) {
+                    fetchAudiusMusic('', 'all', true);
+                }
+            } else if (viewName === 'games') {
+                chatCont.classList.add('hidden');
+                musicCont.classList.add('hidden');
+                gamesCont.classList.remove('hidden');
+                chatInputArea.classList.add('hidden');
+
+                document.getElementById('headerTitle').innerText = 'Games';
+                musicNavBtn.className = 'w-full bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 transition-colors font-medium py-2 px-3 rounded-lg flex items-center justify-center space-x-1.5 text-xs cursor-pointer';
+                gamesNavBtn.className = 'w-full bg-white text-black font-medium py-2 px-3 rounded-lg flex items-center justify-center space-x-1.5 text-xs shadow-sm cursor-pointer';
+            } else {
+                musicCont.classList.add('hidden');
+                gamesCont.classList.add('hidden');
+                chatCont.classList.remove('hidden');
+                chatInputArea.classList.remove('hidden');
+
+                document.getElementById('headerTitle').innerText =
+                    currentChatId ? (chats.find(c => c.id === currentChatId)?.title || 'Conversation') : 'Conversational Assistant';
+
+                musicNavBtn.className = 'w-full bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 transition-colors font-medium py-2 px-3 rounded-lg flex items-center justify-center space-x-1.5 text-xs cursor-pointer';
+                gamesNavBtn.className = 'w-full bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 transition-colors font-medium py-2 px-3 rounded-lg flex items-center justify-center space-x-1.5 text-xs cursor-pointer';
+
+                if (playerBar && audioPlayer.src && !playerClosed) {
+                    setPlayerMode(true);
+                    playerBar.classList.remove('hidden');
+                }
+            }
+        }
+
+        function openGame(gameName) {
+            const gamePlayer = document.getElementById('gamePlayerSection');
+            const gameFrame = document.getElementById('gameFrame');
+            if (!gamePlayer || !gameFrame) return;
+
+            if (gameName === 'fnaf') {
+                gameFrame.src = 'https://fnafgames.io/';
+                gamePlayer.classList.remove('hidden');
+            }
+        }
+
+        function closeGame() {
+            const gamePlayer = document.getElementById('gamePlayerSection');
+            const gameFrame = document.getElementById('gameFrame');
+            if (gamePlayer) gamePlayer.classList.add('hidden');
+            if (gameFrame) gameFrame.src = 'about:blank';
+            switchView('games');
+        }
+
+        function buildAudiusUrl(path, params = {}) {
+            const query = new URLSearchParams({
+                ...params,
+                app_name: "Parasite Studio's",
+                api_key: AUDIUS_API_KEY
+            });
+            return `${AUDIUS_API_BASE}${path}?${query.toString()}`;
+        }
+
+        async function fetchAudiusMusic(searchQuery = '', tag = 'all', reset = true) {
+            const loadingEl = document.getElementById('musicLoadingState');
+            const gridEl = document.getElementById('musicTracksGrid');
+            const requestId = ++musicRequestId;
+
+            if (reset) {
+                musicOffset = 0;
+                musicHasMore = true;
+                musicTracks = [];
+                gridEl.innerHTML = '';
+            }
+
+            loadingEl.classList.remove('hidden');
+
+            try {
+                let data;
+
+                if (!searchQuery && tag === 'all') {
+                    const url = buildAudiusUrl('/tracks/trending', {
+                        limit: 100,
+                        offset: musicOffset
+                    });
+                    const response = await fetch(url, { cache: 'no-store' });
+                    if (!response.ok) throw new Error(`Audius returned ${response.status}`);
+                    data = await response.json();
+                } else {
+                    const query = searchQuery || (tag === 'jerseyclub' ? 'jersey club' : tag);
+                    const params = {
+                        query,
+                        limit: 100,
+                        offset: musicOffset
+                    };
+
+                    const response = await fetch(buildAudiusUrl('/tracks/search', params), {
+                        cache: 'no-store'
+                    });
+                    if (!response.ok) throw new Error(`Audius returned ${response.status}`);
+                    data = await response.json();
+                }
+
+                if (requestId !== musicRequestId) return;
+
+                const results = Array.isArray(data.data) ? data.data : [];
+                const playableResults = results.filter(track => track && track.isStreamable !== false);
+
+                musicTracks = reset ? playableResults : [...musicTracks, ...playableResults];
+                musicOffset += results.length;
+                musicHasMore = results.length > 0 && results.length >= 100;
+
+                renderMusicTracks();
+            } catch (err) {
+                console.error('Error fetching Audius music:', err);
+                if (reset) {
+                    gridEl.innerHTML = `<div class="col-span-full text-center text-xs text-red-400 py-8">Failed to load music. ${escapeHtml(err.message || 'Please try again.')}</div>`;
+                }
+            } finally {
+                if (requestId === musicRequestId) {
+                    loadingEl.classList.add('hidden');
+                }
+            }
+        }
+
+        async function loadMoreAudiusMusic() {
+            if (!musicHasMore) return;
+            const query = document.getElementById('musicSearchInput').value.trim();
+            await fetchAudiusMusic(query, activeGenre, false);
+        }
+
+        function renderMusicTracks() {
+            const gridEl = document.getElementById('musicTracksGrid');
+            gridEl.innerHTML = '';
+
+            if (musicTracks.length === 0) {
+                gridEl.innerHTML = '<div class="col-span-full text-center text-xs text-neutral-500 py-12">No tracks found. Try a different search or genre.</div>';
+                return;
+            }
+
+            musicTracks.forEach((track, idx) => {
+                const isCurrent = (currentTrackIndex === idx && isMusicPlaying);
+                const card = document.createElement('div');
+                card.className = `bg-neutral-950 border ${isCurrent ? 'border-white' : 'border-neutral-900 hover:border-neutral-700'} rounded-2xl p-3 flex items-center space-x-3 transition-colors cursor-pointer group`;
+                card.onclick = () => playTrack(idx);
+
+                const artwork = track.artwork || track.cover_art || {};
+                const albumArt = typeof artwork === 'string'
+                    ? artwork
+                    : (artwork._150x150 || artwork['150x150'] || artwork._480x480 || artwork['480x480'] || artwork._1000x1000 || artwork['1000x1000'] || artwork._600x600 || artwork['600x600'] || track.image || track.thumbnail ||
+                       'https://placehold.co/120x120/111/fff?text=Music');
+                const title = track.title || 'Untitled';
+                const artist = track.user?.name || track.user?.handle || 'Unknown artist';
+                const duration = Number(track.duration) || 0;
+                const durationMin = Math.floor(duration / 60);
+                const durationSec = String(duration % 60).padStart(2, '0');
+
+                card.innerHTML = `
+                    <div class="relative w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-neutral-900 border border-neutral-800">
+                        <img src="${escapeHtml(albumArt)}" alt="${escapeHtml(title)}" class="w-full h-full object-cover group-hover:scale-105 transition-transform" onerror="this.onerror=null;this.src='https://placehold.co/100x100/111/fff?text=Track';" />
+                        <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <i class="fa-solid ${isCurrent ? 'fa-pause' : 'fa-play'} text-white text-xs"></i>
+                        </div>
+                    </div>
+                    <div class="flex-1 truncate">
+                        <h4 class="text-xs font-bold text-white truncate">${escapeHtml(title)}</h4>
+                        <p class="text-[11px] text-neutral-400 truncate">${escapeHtml(artist)}</p>
+                    </div>
+                    <span class="text-[10px] text-neutral-500 font-mono shrink-0">${durationMin}:${durationSec}</span>
+                `;
+                gridEl.appendChild(card);
+            });
+
+            if (musicHasMore) {
+                const moreWrap = document.createElement('div');
+                moreWrap.className = 'col-span-full flex justify-center pt-2 pb-8';
+                const moreBtn = document.createElement('button');
+                moreBtn.className = 'px-4 py-2 rounded-xl bg-neutral-900 border border-neutral-800 text-xs text-neutral-300 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer';
+                moreBtn.innerText = 'Load More Music';
+                moreBtn.onclick = () => loadMoreAudiusMusic();
+                moreWrap.appendChild(moreBtn);
+                gridEl.appendChild(moreWrap);
+            }
+        }
+
+        function getTrackStreamUrl(track) {
+            return buildAudiusUrl(`/tracks/${encodeURIComponent(track.id)}/stream`);
+        }
+
+        function getTrackArtist(track) {
+            return track.user?.name || track.user?.handle || 'Unknown artist';
+        }
+
+        function preloadNextTrack() {
+            if (nextTrackPreloader) {
+                nextTrackPreloader.src = '';
+                nextTrackPreloader = null;
+            }
+
+            if (!musicTracks.length) return;
+
+            const nextIndex = (currentTrackIndex + 1) % musicTracks.length;
+            const next = musicTracks[nextIndex];
+            if (!next?.id) return;
+
+            nextTrackPreloader = new Audio();
+            nextTrackPreloader.preload = 'auto';
+            nextTrackPreloader.src = getTrackStreamUrl(next);
+            nextTrackPreloader.load();
+        }
+
+        function playTrack(index) {
+            if (!musicTracks[index]) return;
+
+            currentTrackIndex = index;
+            const track = musicTracks[index];
+            const streamUrl = getTrackStreamUrl(track);
+
+            playerClosed = false;
+            if (!document.getElementById('musicSection').classList.contains('hidden')) {
+                setPlayerMode(false);
+            } else {
+                setPlayerMode(true);
+            }
+
+            const currentSrc = audioPlayer.src ? decodeURIComponent(audioPlayer.src) : '';
+            if (currentSrc !== streamUrl) {
+                audioPlayer.src = streamUrl;
+                audioPlayer.preload = 'auto';
+                audioPlayer.load();
+            }
+
+            updatePlayerUI();
+
+            audioPlayer.play().then(() => {
+                isMusicPlaying = true;
+                updatePlayerUI();
+                renderMusicTracks();
+                preloadNextTrack();
+            }).catch(e => {
+                console.error('Audius playback error:', e);
+                isMusicPlaying = false;
+                updatePlayerUI();
+                renderMusicTracks();
+            });
+        }
+
+        function togglePlayPause() {
+            if (!audioPlayer.src && musicTracks.length > 0) {
+                playTrack(0);
+                return;
+            }
+
+            if (audioPlayer.paused) {
+                audioPlayer.play().then(() => {
+                    isMusicPlaying = true;
+                    playerClosed = false;
+                    updatePlayerUI();
+                    renderMusicTracks();
+                }).catch(e => console.error('Play error:', e));
+            } else {
+                audioPlayer.pause();
+                isMusicPlaying = false;
+                updatePlayerUI();
+                renderMusicTracks();
+            }
+        }
+
+        function playNextTrack() {
+            if (musicTracks.length === 0) return;
+            currentTrackIndex = (currentTrackIndex + 1) % musicTracks.length;
+            playTrack(currentTrackIndex);
+        }
+
+        function playPrevTrack() {
+            if (musicTracks.length === 0) return;
+            currentTrackIndex = (currentTrackIndex - 1 + musicTracks.length) % musicTracks.length;
+            playTrack(currentTrackIndex);
+        }
+
+        function updatePlayerUI() {
+            const playerBar = document.getElementById('persistentPlayerBar');
+            const track = musicTracks[currentTrackIndex];
+            if (!playerBar || !track) return;
+
+            playerClosed = false;
+            playerBar.classList.remove('hidden');
+
+            document.getElementById('playerTrackTitle').innerText = track.title || 'Untitled';
+            document.getElementById('playerArtistName').innerText = getTrackArtist(track);
+            const playerArtwork = track.artwork || track.cover_art || {};
+            document.getElementById('playerAlbumArt').src =
+                (typeof playerArtwork === 'string'
+                    ? playerArtwork
+                    : (playerArtwork._480x480 || playerArtwork['480x480'] || playerArtwork._150x150 || playerArtwork['150x150'] || playerArtwork._1000x1000 || playerArtwork['1000x1000'])) ||
+                track.image || track.thumbnail ||
+                'https://placehold.co/100x100/111/fff?text=Music';
+
+            const btn = document.getElementById('playerPlayPauseBtn');
+            btn.innerHTML = `<i class="fa-solid ${isMusicPlaying ? 'fa-pause' : 'fa-play'} text-xs"></i>`;
+        }
+
+        function closePlayerBar(event) {
+            if (event) event.stopPropagation();
+            const playerBar = document.getElementById('persistentPlayerBar');
+            if (!playerBar) return;
+            playerClosed = true;
+            playerBar.classList.add('hidden');
+            playerBar.classList.remove('dragging');
+            playerDragState = null;
+        }
+
+        function setPlayerMode(mini) {
+            const playerBar = document.getElementById('persistentPlayerBar');
+            if (!playerBar) return;
+
+            playerIsMini = mini;
+            playerBar.classList.remove('player-bar-expanded', 'player-bar-mini');
+            if (mini) {
+                playerBar.classList.add('player-bar-mini');
+            } else {
+                playerBar.classList.add('player-bar-expanded');
+            }
+        }
+
+        function clampPlayerPosition(x, y) {
+            const bar = document.getElementById('persistentPlayerBar');
+            if (!bar) return { x, y };
+
+            const margin = 8;
+            const maxX = Math.max(margin, window.innerWidth - bar.offsetWidth - margin);
+            const maxY = Math.max(margin, window.innerHeight - bar.offsetHeight - margin);
+            return {
+                x: Math.min(Math.max(margin, x), maxX),
+                y: Math.min(Math.max(margin, y), maxY)
+            };
+        }
+
+        function resetPlayerPositionForMode() {
+            const bar = document.getElementById('persistentPlayerBar');
+            if (!bar || !playerIsMini) return;
+
+            const rect = bar.getBoundingClientRect();
+            const target = clampPlayerPosition(window.innerWidth - rect.width - 14, window.innerHeight - rect.height - 80);
+            bar.style.left = `${target.x}px`;
+            bar.style.top = `${target.y}px`;
+            bar.style.right = 'auto';
+            bar.style.bottom = 'auto';
+        }
+
+        function beginPlayerDrag(e) {
+            const bar = document.getElementById('persistentPlayerBar');
+            const handle = document.getElementById('playerDragHandle');
+            if (!bar || !handle || !playerIsMini) return;
+            if (e.target.closest('button, input')) return;
+
+            const rect = bar.getBoundingClientRect();
+            playerDragState = {
+                offsetX: e.clientX - rect.left,
+                offsetY: e.clientY - rect.top
+            };
+
+            bar.classList.add('dragging');
+            if (handle.setPointerCapture) handle.setPointerCapture(e.pointerId);
+            e.preventDefault();
+        }
+
+        function movePlayerDrag(e) {
+            if (!playerDragState) return;
+            const bar = document.getElementById('persistentPlayerBar');
+            if (!bar) return;
+
+            const next = clampPlayerPosition(
+                e.clientX - playerDragState.offsetX,
+                e.clientY - playerDragState.offsetY
+            );
+
+            bar.style.left = `${next.x}px`;
+            bar.style.top = `${next.y}px`;
+            bar.style.right = 'auto';
+            bar.style.bottom = 'auto';
+        }
+
+        function endPlayerDrag(e) {
+            if (!playerDragState) return;
+            const bar = document.getElementById('persistentPlayerBar');
+            if (bar) bar.classList.remove('dragging');
+            playerDragState = null;
+        }
+
+        function initDraggablePlayer() {
+            const handle = document.getElementById('playerDragHandle');
+            if (!handle) return;
+
+            handle.addEventListener('pointerdown', beginPlayerDrag);
+            handle.addEventListener('pointermove', movePlayerDrag);
+            handle.addEventListener('pointerup', endPlayerDrag);
+            handle.addEventListener('pointercancel', endPlayerDrag);
+        }
+
+        audioPlayer.onplay = function() {
+            isMusicPlaying = true;
+            playerClosed = false;
+            updatePlayerUI();
+            renderMusicTracks();
+            preloadNextTrack();
+        };
+
+        audioPlayer.onpause = function() {
+            isMusicPlaying = false;
+            updatePlayerUI();
+            renderMusicTracks();
+        };
+
+        audioPlayer.ontimeupdate = function() {
+            const current = audioPlayer.currentTime;
+            const duration = audioPlayer.duration || 1;
+            const percent = duration > 0 ? (current / duration) * 100 : 0;
+
+            document.getElementById('trackSeekBar').value = Number.isFinite(percent) ? percent : 0;
+
+            const curMin = Math.floor(current / 60);
+            const curSec = String(Math.floor(current % 60)).padStart(2, '0');
+            document.getElementById('currentTimeLabel').innerText = `${curMin}:${curSec}`;
+
+            const durMin = Math.floor(duration / 60);
+            const durSec = String(Math.floor(duration % 60)).padStart(2, '0');
+            document.getElementById('durationLabel').innerText = `${durMin}:${durSec}`;
+        };
+
+        audioPlayer.onended = function() {
+            playNextTrack();
+        };
+
+        audioPlayer.onerror = function() {
+            console.error('Audius stream error');
+        };
+
+        function seekTrack(val) {
+            if (!audioPlayer.duration) return;
+            audioPlayer.currentTime = (val / 100) * audioPlayer.duration;
+        }
+
+        function adjustVolume(val) {
+            audioPlayer.volume = val;
+        }
+
+        function handleMusicSearchKeydown(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const query = e.target.value.trim();
+                fetchAudiusMusic(query, activeGenre, true);
+            }
+        }
+
+        function filterByGenre(genre, btnEl) {
+            activeGenre = genre;
+            document.querySelectorAll('.genre-btn').forEach(b => {
+                b.className = 'genre-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 shrink-0 transition-colors cursor-pointer';
+            });
+            btnEl.className = 'genre-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-black shrink-0 transition-colors cursor-pointer';
+
+            const searchQuery = document.getElementById('musicSearchInput').value.trim();
+            fetchAudiusMusic(searchQuery, activeGenre, true);
+        }
+
+        window.addEventListener('resize', () => {
+            if (playerIsMini) resetPlayerPositionForMode();
+        });
+
+        function isPromptSafe(text) {
+            if (!text) return true;
+            const lower = text.toLowerCase();
+            
+            // Restricted harmful/explicit words for chat mode (allowing conversational cuss words and hostility)
+            const strictForbiddenWords = [
+                'porn', 'nsfw', 'naked', 'nude', 'explicit', 'erotic', 'rape', 'incest', 'bestiality',
+                'prostitute', 'escort', 'orgasm', 'fetish', 'bdsm', 'gore', 'terrorist', 'torture', 
+                'corpse', 'slaughter', 'massacre', 'behead', 'overdose', 'ransomware', 'phishing'
+            ];
+
+            const words = lower.split(/[^a-z0-9]+/);
+            for (const word of strictForbiddenWords) {
+                if (words.includes(word)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        function isImagePromptSafe(text) {
+            if (!text) return true;
+            const lower = text.toLowerCase();
+            
+            // Full restrictions for image generation including profanity
+            const strictForbiddenWords = [
+                'porn', 'nsfw', 'naked', 'nude', 'explicit', 'erotic', 'rape', 'incest', 'bestiality',
+                'prostitute', 'escort', 'orgasm', 'fetish', 'bdsm', 'gore', 'terrorist', 'torture', 
+                'corpse', 'slaughter', 'massacre', 'behead', 'overdose', 'ransomware', 'phishing',
+                'pussy', 'cock', 'dick', 'fuck', 'shit', 'bitch', 'whore', 'slut'
+            ];
+
+            const words = lower.split(/[^a-z0-9]+/);
+            for (const word of strictForbiddenWords) {
+                if (words.includes(word)) {
+                    return false;
+                }
+            }
+            return true;
+        }
 
         window.onload = function() {
             document.getElementById('imageModelSelector').value = currentImageModel;
+            document.getElementById('imageAspectRatioSelector').value = currentAspectRatio;
             
             let savedApiKey = localStorage.getItem('openrouter_api_key') || '';
             document.getElementById('apiKeyInput').value = savedApiKey;
@@ -249,8 +1005,7 @@
             renderGlobalMemoryList();
             updateNotificationUI();
             checkAdBlocker();
-            checkImageGenLimit();
-            setInterval(checkImageGenLimit, 10000);
+            initDraggablePlayer();
         };
 
         async function toggleNotifications() {
@@ -291,7 +1046,7 @@
         function triggerNotification() {
             if (notificationsEnabled && Notification.permission === 'granted') {
                 try {
-                    new Notification("Parasite.AI", {
+                    new Notification("Parasite Studio's", {
                         body: "Your response is ready!",
                         icon: "https://placehold.co/128x128/111/fff?text=P"
                     });
@@ -328,36 +1083,10 @@
             setGeneratingState(false);
             document.getElementById('statusDot').className = 'w-2 h-2 rounded-full bg-neutral-600 transition-colors';
             
-            const loadingEls = document.querySelectorAll('[id^="loading_"]');
-            loadingEls.forEach(el => el.remove());
-        }
-
-        function checkImageGenLimit() {
-            const now = Date.now();
-            const btn = document.getElementById('imageGenToggle');
-            
-            if (imageGenUsage.lockUntil > now) {
-                const remainingMs = imageGenUsage.lockUntil - now;
-                const remainingHours = Math.ceil(remainingMs / (1000 * 60 * 60));
-                if (imageGenMode) toggleImageGen();
-                if (btn) {
-                    btn.disabled = true;
-                    btn.className = 'text-xs px-2.5 py-1 rounded-md border border-red-900 bg-red-950/50 text-red-300 transition-colors flex items-center space-x-1.5 opacity-50 cursor-not-allowed';
-                    btn.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-red-500"></span><span>Locked (${remainingHours}h)</span>`;
-                }
-                return true;
-            } else {
-                if (imageGenUsage.lockUntil !== 0 && now >= imageGenUsage.lockUntil) {
-                    imageGenUsage = { count: 0, lockUntil: 0 };
-                    localStorage.setItem('parasite_ai_image_usage', JSON.stringify(imageGenUsage));
-                }
-                if (btn) {
-                    btn.disabled = false;
-                    btn.className = 'text-xs px-2.5 py-1 rounded-md border border-neutral-800 bg-neutral-900 text-neutral-400 hover:text-white transition-colors flex items-center space-x-1.5 cursor-pointer';
-                    btn.innerHTML = `<span id="imageGenIndicator" class="w-1.5 h-1.5 rounded-full bg-neutral-600"></span><span id="imageGenLabel">Image Generator</span>`;
-                }
-                return false;
-            }
+            const loadingEls = document.querySelectorAll('[id^="loading_"], [id^="img_msg_"]');
+            loadingEls.forEach(el => {
+                if (el.querySelector('.fa-spinner')) el.remove();
+            });
         }
 
         function checkAdBlocker() {
@@ -626,7 +1355,6 @@
         }
 
         function toggleImageGen() {
-            if (checkImageGenLimit()) return;
             imageGenMode = !imageGenMode;
             const ind = document.getElementById('imageGenIndicator');
             const btn = document.getElementById('imageGenToggle');
@@ -637,7 +1365,7 @@
                 ind.className = 'w-1.5 h-1.5 rounded-full bg-purple-400';
                 btn.className = 'text-xs px-2.5 py-1 rounded-md border border-purple-800 bg-purple-950 text-white transition-colors flex items-center space-x-1.5 cursor-pointer';
                 modelContainer.classList.remove('hidden');
-                input.placeholder = 'Describe the image you want to generate...';
+                input.placeholder = 'Describe your image in rich detail (e.g., cinematic lighting, 8k)...';
             } else {
                 ind.className = 'w-1.5 h-1.5 rounded-full bg-neutral-600';
                 btn.className = 'text-xs px-2.5 py-1 rounded-md border border-neutral-800 bg-neutral-900 text-neutral-400 hover:text-white transition-colors flex items-center space-x-1.5 cursor-pointer';
@@ -649,6 +1377,11 @@
         function changeImageModel(val) {
             currentImageModel = val;
             localStorage.setItem('parasite_ai_image_model', val);
+        }
+
+        function changeAspectRatio(val) {
+            currentAspectRatio = val;
+            localStorage.setItem('parasite_ai_aspect_ratio', val);
         }
 
         function sendPreset(text) {
@@ -684,7 +1417,7 @@
             renderAttachmentPreview();
             const input = document.getElementById('userInput');
             input.disabled = false;
-            input.placeholder = imageGenMode ? 'Describe the image you want to generate...' : 'Type your message here or describe an image...';
+            input.placeholder = imageGenMode ? 'Describe your image in rich detail...' : 'Type your message here or describe an image...';
             input.focus();
         }
 
@@ -734,6 +1467,35 @@
             const lowerText = text.toLowerCase();
             const isSelfHarm = selfHarmKeywords.some(kw => lowerText.includes(kw));
 
+            if (!isPromptSafe(text) || (imageGenMode && !isImagePromptSafe(text)) || isSelfHarm) {
+                input.value = '';
+                input.style.height = 'auto';
+                
+                let chat = chats.find(c => c.id === currentChatId);
+                if (!chat) {
+                    startNewChat();
+                    chat = chats.find(c => c.id === currentChatId);
+                }
+
+                if (chat.messages.length === 0 || chat.title === 'New Conversation') {
+                    chat.title = text.length > 28 ? text.substring(0, 28) + '...' : text;
+                    saveChats();
+                    renderChatHistory();
+                }
+
+                chat.messages.push({ role: 'user', content: text, feedback: null });
+                
+                const refusalResponse = isSelfHarm 
+                    ? "I hear how much pain you're going through right now, and your life truly matters. Please know you don't have to carry this alone. If you are having thoughts of hurting yourself, please reach out for support immediately:\n\n- **Call or text 988** to reach the Suicide & Crisis Lifeline (free, confidential, and available 24/7 in the US and Canada).\n- **Text HOME to 741741** to connect with the Crisis Text Line.\n- **Call 911** or go to the nearest emergency room if you are in immediate danger.\n\nPlease talk to a trusted adult, professional, or call one of these resources right away."
+                    : "Your request can not be generated";
+                
+                chat.messages.push({ role: 'assistant', content: refusalResponse, feedback: null });
+                saveChats();
+                renderActiveChat();
+                triggerNotification();
+                return;
+            }
+
             if (text.toLowerCase().includes('remember')) {
                 if (!globalMemory.includes(text)) {
                     globalMemory.push(text);
@@ -754,7 +1516,7 @@
             attachedImage = null;
             renderAttachmentPreview();
             input.disabled = false;
-            input.placeholder = imageGenMode ? 'Describe the image you want to generate...' : 'Type your message here or describe an image...';
+            input.placeholder = imageGenMode ? 'Describe your image in rich detail...' : 'Type your message here or describe an image...';
 
             let chat;
             chat = chats.find(c => c.id === currentChatId);
@@ -797,70 +1559,109 @@
             setGeneratingState(true);
 
             if (imageGenMode) {
-                await executeImageGeneration(text || 'A generated scene');
+                await executeAdvancedImageGeneration(text || 'A beautiful photographic masterpiece');
             } else {
                 await executeAIResponse();
             }
         }
 
-        async function executeImageGeneration(promptText) {
-            if (checkImageGenLimit()) {
-                setGeneratingState(false);
-                return;
-            }
-
-            imageGenUsage.count++;
-            if (imageGenUsage.count >= 10) {
-                imageGenUsage.lockUntil = Date.now() + (5 * 60 * 60 * 1000);
-            }
-            localStorage.setItem('parasite_ai_image_usage', JSON.stringify(imageGenUsage));
-            checkImageGenLimit();
-
+        async function executeAdvancedImageGeneration(promptText) {
             let chat = chats.find(c => c.id === currentChatId);
             if (!chat) {
                 setGeneratingState(false);
                 return;
             }
 
-            const loadingId = appendLoadingMessage(`Synthesizing unique image with ${currentImageModel.toUpperCase()}... (${imageGenUsage.count}/10 used)`);
+            if (!isImagePromptSafe(promptText)) {
+                setGeneratingState(false);
+                const refusalMsg = "Your request can not be generated";
+                chat.messages.push({ role: 'assistant', content: refusalMsg, feedback: null });
+                saveChats();
+                appendMessageNode('assistant', refusalMsg, false, chat.messages.length - 1, null, null);
+                triggerNotification();
+                return;
+            }
+
+            let modelName = currentImageModel; 
+            let width = 1080;
+            let height = 1080;
+
+            if (currentAspectRatio === '16:9') {
+                width = 1920;
+                height = 1080;
+            } else if (currentAspectRatio === '9:16') {
+                width = 1080;
+                height = 1920;
+            }
+
+            const negativePrompt = document.getElementById('negativePromptInput')?.value.trim() || '';
+            
+            let enhancedPrompt = promptText;
+            if (negativePrompt) {
+                enhancedPrompt += `, avoiding ${negativePrompt}`;
+            }
+
+            const modelDisplayTitles = {
+                'flux': 'Flux (Latest Best Quality)',
+                'flux-realism': 'Flux Realism',
+                'turbo': 'Turbo Fast'
+            };
+            const modelDisplayTitle = modelDisplayTitles[currentImageModel] || 'Flux Engine';
+            
+            const encodedPrompt = encodeURIComponent(enhancedPrompt);
+            const randomSeed = Math.floor(Math.random() * 1000000000);
+            const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?model=${modelName}&width=${width}&height=${height}&nologo=true&seed=${randomSeed}`;
+
+            const messageId = appendBlurredLoadingMessage(modelDisplayTitle, promptText, imageUrl);
             document.getElementById('statusDot').className = 'w-2 h-2 rounded-full bg-purple-500 transition-colors';
 
             try {
                 currentAbortController = new AbortController();
                 
-                await new Promise((resolve, reject) => {
-                    const timer = setTimeout(resolve, 2000);
-                    currentAbortController.signal.addEventListener('abort', () => {
-                        clearTimeout(timer);
-                        reject(new Error('Generation aborted by user.'));
-                    });
+                let computeProgress = 10;
+                const progressInterval = setInterval(() => {
+                    computeProgress = Math.min(95, computeProgress + Math.floor(Math.random() * 12) + 5);
+                    const progressBar = document.getElementById(`progressBar_${messageId}`);
+                    const progressText = document.getElementById(`progressText_${messageId}`);
+                    if (progressBar) progressBar.style.width = computeProgress + '%';
+                    if (progressText) progressText.innerText = computeProgress + '%';
+                }, 200);
+
+                currentAbortController.signal.addEventListener('abort', () => {
+                    clearInterval(progressInterval);
                 });
 
-                const encodedPrompt = encodeURIComponent(promptText);
-                const randomSeed = Math.floor(Math.random() * 100000000);
-                const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?model=${currentImageModel}&width=1024&height=1024&nologo=true&seed=${randomSeed}`;
-                
                 await new Promise((resolve, reject) => {
                     const img = new Image();
-                    img.onload = () => resolve();
-                    img.onerror = () => reject(new Error('Failed to load generated image.'));
+                    img.onload = () => {
+                        clearInterval(progressInterval);
+                        resolve();
+                    };
+                    img.onerror = () => {
+                        clearInterval(progressInterval);
+                        reject(new Error('Failed to render image. Please try a different description.'));
+                    };
                     img.src = imageUrl;
-                    if (currentAbortController.signal.aborted) reject(new Error('Generation aborted by user.'));
+                    if (currentAbortController.signal.aborted) {
+                        clearInterval(progressInterval);
+                        reject(new Error('Generation aborted by user.'));
+                    }
                 });
 
                 const messageContent = `[IMAGE:${imageUrl}:${promptText}]`;
-
-                removeLoadingMessage(loadingId);
                 document.getElementById('statusDot').className = 'w-2 h-2 rounded-full bg-neutral-600 transition-colors';
                 
                 chat.messages.push({ role: 'assistant', content: messageContent, feedback: null });
                 saveChats();
-                appendMessageNode('assistant', messageContent, false, chat.messages.length - 1, null);
+
+                finalizeBlurredMessage(messageId, imageUrl, promptText, chat.messages.length - 1);
                 triggerNotification();
 
             } catch (error) {
-                removeLoadingMessage(loadingId);
                 document.getElementById('statusDot').className = 'w-2 h-2 rounded-full bg-neutral-600 transition-colors';
+                const el = document.getElementById(messageId);
+                if (el) el.remove();
+
                 if (error.message !== 'Generation aborted by user.') {
                     const errorMsg = `Error generating image: ${error.message}`;
                     chat.messages.push({ role: 'assistant', content: errorMsg, feedback: null });
@@ -871,6 +1672,81 @@
                 currentAbortController = null;
                 setGeneratingState(false);
             }
+        }
+
+        function appendBlurredLoadingMessage(modelTitle, promptText, imageUrl) {
+            const messageList = document.getElementById('messageList');
+            document.getElementById('introScreen').classList.add('hidden');
+            messageList.classList.remove('hidden');
+
+            const messageId = 'img_msg_' + Date.now();
+            const wrapper = document.createElement('div');
+            wrapper.id = messageId;
+            wrapper.className = 'flex space-x-3 justify-start w-full max-w-xl';
+
+            const avatar = document.createElement('div');
+            avatar.className = 'w-2.5 h-2.5 rounded-full bg-purple-500 shrink-0 mt-2';
+            wrapper.appendChild(avatar);
+
+            const containerDiv = document.createElement('div');
+            containerDiv.className = 'w-full';
+
+            const bubble = document.createElement('div');
+            bubble.className = 'rounded-2xl p-4 text-xs bg-neutral-950 border border-neutral-800 text-neutral-200 space-y-3 shadow-xl';
+            
+            bubble.innerHTML = `
+                <div class="flex items-center justify-between border-b border-neutral-900 pb-2">
+                    <div class="flex items-center space-x-2">
+                        <span class="font-bold text-white tracking-wide">Generating Image</span>
+                    </div>
+                    <span class="text-[10px] text-purple-400 font-mono">${escapeHtml(modelTitle)}</span>
+                </div>
+                <div class="space-y-2">
+                    <div class="text-neutral-400 truncate">Prompt: <span class="italic text-white">"${escapeHtml(promptText)}"</span></div>
+                    
+                    <div class="relative rounded-xl overflow-hidden border border-neutral-800 bg-neutral-900 aspect-square max-w-sm mx-auto shadow-2xl">
+                        <img src="${imageUrl}" alt="Generating preview" class="w-full h-full object-cover filter blur-xl opacity-50" />
+                        <div class="absolute inset-0 bg-black/60 flex flex-col items-center justify-center p-6 text-center space-y-3">
+                            <div class="w-full bg-neutral-900 h-2 rounded-full overflow-hidden border border-neutral-800 max-w-[220px]">
+                                <div id="progressBar_${messageId}" class="bg-purple-600 h-full w-[10%] transition-all duration-300"></div>
+                            </div>
+                            <p class="text-xs text-neutral-300 font-medium">Creating your image (<span id="progressText_${messageId}">10%</span>)...</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            containerDiv.appendChild(bubble);
+            wrapper.appendChild(containerDiv);
+            messageList.appendChild(wrapper);
+            scrollToBottom();
+            return messageId;
+        }
+
+        function finalizeBlurredMessage(messageId, imageUrl, promptText, messageIndex) {
+            const wrapper = document.getElementById(messageId);
+            if (!wrapper) return;
+
+            const containerDiv = wrapper.querySelector('div.w-full');
+            if (!containerDiv) return;
+
+            containerDiv.innerHTML = `
+                <div class="rounded-2xl p-4 text-xs bg-neutral-950 border border-neutral-800 text-neutral-200 space-y-3 shadow-xl">
+                    <p class="text-xs text-neutral-400">Generated image for: <span class="italic text-white">"${escapeHtml(promptText)}"</span></p>
+                    <div class="rounded-xl overflow-hidden border border-neutral-800 bg-neutral-900 aspect-square max-w-sm mx-auto shadow-2xl transition-all duration-700">
+                        <img src="${imageUrl}" alt="${escapeHtml(promptText)}" class="w-full h-full object-cover animate-fade-in" onerror="this.onerror=null;this.src='https://placehold.co/600x600/111/fff?text=Image+Load+Failed';" />
+                    </div>
+                    <div class="flex items-center space-x-2 pt-1">
+                        <button onclick="downloadGeneratedImage(this)" data-url="${escapeHtml(imageUrl)}" data-prompt="${escapeHtml(promptText)}" class="bg-white hover:bg-neutral-200 text-black font-medium px-3 py-1.5 rounded-lg text-xs flex items-center space-x-1.5 transition-colors cursor-pointer">
+                            <i class="fa-solid fa-download text-[10px]"></i>
+                            <span>Download PNG</span>
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            appendMessageActions(containerDiv, 'assistant', `[IMAGE:${imageUrl}:${promptText}]`, messageIndex, false, null);
+            scrollToBottom();
         }
 
         async function executeAIResponse() {
@@ -922,7 +1798,7 @@
                 ];
 
                 const payload = {
-                    model: "nvidia/nemotron-3-super-120b-a12b:free",
+                    model: "openrouter/free",
                     messages: apiMessages
                 };
 
@@ -985,6 +1861,9 @@
                     </div>
                 `;
             }
+            if (content === "Your request can not be generated") {
+                return html + `<span class="text-red-400 font-medium">Your request can not be generated</span>`;
+            }
             if (content.startsWith('[IMAGE:') && content.endsWith(']')) {
                 const parts = content.slice(1, -1).split(':');
                 const url = parts.slice(1, -1).join(':');
@@ -1007,27 +1886,16 @@
 
             let escaped = escapeHtml(content);
 
-            // Code blocks
             escaped = escaped.replace(/```([\s\S]*?)```/g, '<pre class="bg-neutral-900 border border-neutral-800 p-3 rounded-lg my-2 overflow-x-auto text-xs text-neutral-200 font-mono"><code>$1</code></pre>');
-            
-            // Inline code
             escaped = escaped.replace(/`([^`]+)`/g, '<code class="bg-neutral-900 px-1 py-0.5 rounded text-xs text-neutral-200 font-mono">$1</code>');
-
-            // Headers
             escaped = escaped.replace(/^# (.*?)$/gm, '<h1 class="text-lg font-bold text-white my-2.5 tracking-tight">$1</h1>');
-            escaped = escaped.replace(/^## (.*?)$/gm, '<h2 class="text-base font-bold text-white my-2 tracking-tight">$1</h2>');
+            escaped = escaped.replace(/^## (.*?)$/gm, '<h2 class="text-base font-bold text-white my-2 tracking-tight">$2</h2>');
             escaped = escaped.replace(/^### (.*?)$/gm, '<h3 class="text-sm font-bold text-white my-1.5 tracking-tight">$1</h3>');
-
-            // Bullet points & lists
             escaped = escaped.replace(/^\* (.*?)$/gm, '<li class="ml-4 list-disc text-neutral-200">$1</li>');
             escaped = escaped.replace(/^- (.*?)$/gm, '<li class="ml-4 list-disc text-neutral-200">$1</li>');
-
-            // Bold & Italic
             escaped = escaped.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-white">$1</strong>');
             escaped = escaped.replace(/\*(.*?)\*/g, '<em class="italic text-neutral-200">$1</em>');
             escaped = escaped.replace(/_(.*?)_/g, '<em class="italic text-neutral-200">$1</em>');
-
-            // Newlines
             escaped = escaped.replace(/\n/g, '<br>');
 
             return html + escaped;
@@ -1269,7 +2137,7 @@
 
             setGeneratingState(true);
             if (imageGenMode) {
-                executeImageGeneration(newContent);
+                executeAdvancedImageGeneration(newContent);
             } else {
                 executeAIResponse();
             }
@@ -1286,7 +2154,7 @@
 
             setGeneratingState(true);
             if (imageGenMode && userMsg) {
-                executeImageGeneration(userMsg);
+                executeAdvancedImageGeneration(userMsg);
             } else {
                 executeAIResponse();
             }
