@@ -1,27 +1,43 @@
 <!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Parasite Studio's - Conversational Assistant</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4">
+    </script>
+    <script src="https://js.puter.com/v2/"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        code, pre { font-family: 'JetBrains Mono', monospace; }
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: #000000; }
-        ::-webkit-scrollbar-thumb { background: #333333; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: #555555; }
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        code,
+        pre {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #000000;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #333333;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555555;
+        }
         .player-bar {
             position: fixed;
             right: 18px;
             bottom: 18px;
             border-radius: 18px;
             will-change: transform, width, height, left, top;
-            transition:
-                width .42s cubic-bezier(.22, 1, .36, 1),
+            transition: width .42s cubic-bezier(.22, 1, .36, 1),
                 height .42s cubic-bezier(.22, 1, .36, 1),
                 padding .42s cubic-bezier(.22, 1, .36, 1),
                 border-radius .42s cubic-bezier(.22, 1, .36, 1),
@@ -79,12 +95,33 @@
                 bottom: 76px;
             }
         }
-        @keyframes pulse-slow { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-        .animate-pulse-slow { animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse-slow {
+            0%,
+            100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.4;
+            }
+        }
+        .animate-pulse-slow {
+            animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        .image-edit-modal-backdrop {
+            backdrop-filter: blur(10px);
+        }
+        .edit-chip {
+            transition: all .18s ease;
+        }
+        .edit-chip:hover {
+            transform: translateY(-1px);
+        }
     </style>
 </head>
 <body id="mainBody" class="bg-black text-white h-screen flex overflow-hidden selection:bg-white selection:text-black">
 
+    <!-- SIDEBAR -->
     <aside id="sidebar" class="w-72 bg-neutral-950 border-r border-neutral-800 flex flex-col transition-all duration-300 z-20 md:relative absolute h-full -translate-x-full md:translate-x-0">
         <div class="p-4 border-b border-neutral-800 flex items-center justify-between">
             <div onclick="startNewChat()" class="flex items-center space-x-2.5 cursor-pointer group">
@@ -120,7 +157,7 @@
                 <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-neutral-500">
                     <i class="fa-solid fa-search text-xs"></i>
                 </span>
-                <input type="text" id="chatSearchInput" oninput="filterChatHistory(this.value)" placeholder="Search chats..." class="w-full bg-neutral-900 border border-neutral-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-600 transition-colors">
+                <input type="text" id="chatSearchInput" oninput="filterChatHistory(this.value)" placeholder="Search chats..." class="w-full bg-neutral-900 border border-neutral-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-600 transition-colors" />
             </div>
         </div>
 
@@ -130,6 +167,7 @@
         </div>
     </aside>
 
+    <!-- MAIN -->
     <main class="flex-1 flex flex-col h-full bg-black relative">
         <header class="h-14 border-b border-neutral-900 flex items-center justify-between px-4 bg-black/80 backdrop-blur z-10">
             <div class="flex items-center space-x-3">
@@ -145,7 +183,8 @@
 
         <canvas id="musicCanvas" aria-hidden="true" class="fixed inset-0 pointer-events-none opacity-0"></canvas>
 
-         <div id="musicSection" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 hidden">
+        <!-- MUSIC SECTION -->
+        <div id="musicSection" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 hidden">
             <div class="max-w-4xl mx-auto space-y-6">
                 <div class="flex flex-col md:flex-row items-center justify-between gap-4">
                     <div class="flex items-center space-x-3 w-full md:w-auto">
@@ -162,7 +201,7 @@
                         <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-neutral-500">
                             <i class="fa-solid fa-search text-xs"></i>
                         </span>
-                        <input type="text" id="musicSearchInput" onkeydown="handleMusicSearchKeydown(event)" placeholder="Search tracks, artists..." class="w-full bg-neutral-900 border border-neutral-800 rounded-xl pl-8 pr-3 py-2 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-white transition-colors">
+                        <input type="text" id="musicSearchInput" onkeydown="handleMusicSearchKeydown(event)" placeholder="Search tracks, artists..." class="w-full bg-neutral-900 border border-neutral-800 rounded-xl pl-8 pr-3 py-2 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-white transition-colors" />
                     </div>
                 </div>
 
@@ -189,6 +228,7 @@
             </div>
         </div>
 
+        <!-- GAMES SECTION -->
         <div id="gamesSection" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 hidden">
             <div class="max-w-6xl mx-auto space-y-5">
                 <div class="flex items-center justify-between gap-3">
@@ -207,7 +247,7 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <button onclick="openGame('fnaf')" class="text-left bg-neutral-950 border border-neutral-900 hover:border-neutral-700 rounded-2xl p-3 transition-colors group cursor-pointer">
                         <div class="relative aspect-video rounded-xl overflow-hidden bg-neutral-900 border border-neutral-800">
-                            <img src="https://fnafgames.io/upload/imgs/fnaf-games.jpg" alt="FNAF Games" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onerror="this.onerror=null;this.src='https://placehold.co/640x360/111/fff?text=FNAF';">
+                            <img src="https://fnafgames.io/upload/imgs/fnaf-games.jpg" alt="FNAF Games" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onerror="this.onerror=null;this.src='https://placehold.co/640x360/111/fff?text=FNAF';" />
                             <div class="absolute inset-0 bg-black/45 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                 <span class="w-12 h-12 rounded-full bg-white text-black flex items-center justify-center shadow-lg">
                                     <i class="fa-solid fa-play"></i>
@@ -226,6 +266,7 @@
             </div>
         </div>
 
+        <!-- GAME PLAYER OVERLAY -->
         <div id="gamePlayerSection" class="fixed inset-0 bg-black z-30 hidden">
             <div class="h-14 border-b border-neutral-900 bg-black flex items-center justify-between px-4">
                 <div class="flex items-center space-x-3 min-w-0">
@@ -243,6 +284,7 @@
             <iframe id="gameFrame" src="about:blank" title="FNAF" class="w-full h-[calc(100%-3.5rem)] border-0 bg-black" allow="autoplay; fullscreen; gamepad" allowfullscreen></iframe>
         </div>
 
+        <!-- CHAT CONTAINER -->
         <div id="chatContainer" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
             <div id="introScreen" class="h-full flex flex-col items-center justify-center max-w-xl mx-auto text-center space-y-6">
                 <div class="space-y-2">
@@ -278,6 +320,7 @@
             </div>
         </div>
 
+        <!-- INPUT AREA -->
         <div class="p-4 bg-black border-t border-neutral-900">
             <div class="max-w-3xl mx-auto relative">
                 <div class="flex items-center justify-between mb-2 px-1 flex-wrap gap-2">
@@ -292,9 +335,9 @@
                         </button>
                         <div id="imageModelContainer" class="hidden flex items-center space-x-2">
                             <select id="imageModelSelector" onchange="changeImageModel(this.value)" class="bg-neutral-900 border border-neutral-800 rounded-md px-2.5 py-1 text-xs text-neutral-300 focus:outline-none focus:border-neutral-600 cursor-pointer">
-                                <option value="flux">Model: Flux Pro (Ultra Realistic)</option>
-                                <option value="flux-realism">Model: Flux Realism (Photographic)</option>
-                                <option value="turbo">Model: Turbo Fast (Creative Art)</option>
+                                <option value="gpt-image-2">Puter: GPT Image 2</option>
+                                <option value="gemini-3-pro-image">Puter: Gemini 3 Pro Image</option>
+                                <option value="grok-imagine-image">Puter: Grok Imagine Image</option>
                             </select>
                             <select id="imageAspectRatioSelector" onchange="changeAspectRatio(this.value)" class="bg-neutral-900 border border-neutral-800 rounded-md px-2.5 py-1 text-xs text-neutral-300 focus:outline-none focus:border-neutral-600 cursor-pointer">
                                 <option value="1:1">Square (1:1)</option>
@@ -307,7 +350,7 @@
                 <div id="attachmentPreviewContainer" class="hidden mb-2"></div>
                 <div class="flex items-end bg-neutral-950 border border-neutral-800 rounded-xl focus-within:border-white transition-colors shadow-lg relative">
                     <div class="p-3 pb-3 flex items-center shrink-0">
-                        <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="handleFileSelected(event)">
+                        <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="handleFileSelected(event)" />
                         <button id="attachFileBtn" onclick="document.getElementById('fileInput').click()" title="Attach Image" class="text-neutral-400 hover:text-white p-1 flex items-center justify-center cursor-pointer transition-colors">
                             <i class="fa-solid fa-paperclip text-sm"></i>
                         </button>
@@ -320,9 +363,10 @@
             </div>
         </div>
 
+        <!-- PERSISTENT PLAYER BAR -->
         <div id="persistentPlayerBar" class="hidden player-bar player-bar-expanded bg-neutral-950 border border-neutral-800 px-4 py-3 z-40 items-center justify-between gap-4 shadow-2xl">
             <div id="playerDragHandle" class="flex items-center space-x-3 w-1/4 min-w-[180px] cursor-grab active:cursor-grabbing select-none touch-none">
-                <img id="playerAlbumArt" src="https://placehold.co/100x100/111/fff?text=No+Track" alt="Album Art" class="w-11 h-11 rounded-lg object-cover border border-neutral-800 shrink-0">
+                <img id="playerAlbumArt" src="https://placehold.co/100x100/111/fff?text=No+Track" alt="Album Art" class="w-11 h-11 rounded-lg object-cover border border-neutral-800 shrink-0" />
                 <div class="truncate">
                     <h4 id="playerTrackTitle" class="text-xs font-bold text-white truncate">Select a track</h4>
                     <p id="playerArtistName" class="text-[11px] text-neutral-400 truncate">Music</p>
@@ -337,14 +381,14 @@
                 </div>
                 <div class="flex items-center space-x-2 w-full text-[10px] text-neutral-400 font-mono player-timeline">
                     <span id="currentTimeLabel">0:00</span>
-                    <input type="range" id="trackSeekBar" value="0" min="0" max="100" oninput="seekTrack(this.value)" class="w-full accent-white h-1 bg-neutral-800 rounded-lg cursor-pointer">
+                    <input type="range" id="trackSeekBar" value="0" min="0" max="100" oninput="seekTrack(this.value)" class="w-full accent-white h-1 bg-neutral-800 rounded-lg cursor-pointer" />
                     <span id="durationLabel">0:00</span>
                 </div>
             </div>
 
             <div class="player-volume hidden md:flex items-center space-x-2 w-1/4 justify-end text-neutral-400">
                 <i class="fa-solid fa-volume-high text-xs"></i>
-                <input type="range" id="volumeSlider" min="0" max="1" step="0.05" value="1" oninput="adjustVolume(this.value)" class="w-20 accent-white h-1 bg-neutral-800 rounded-lg cursor-pointer">
+                <input type="range" id="volumeSlider" min="0" max="1" step="0.05" value="1" oninput="adjustVolume(this.value)" class="w-20 accent-white h-1 bg-neutral-800 rounded-lg cursor-pointer" />
             </div>
 
             <button id="playerCloseBtn" onclick="closePlayerBar(event)" title="Hide player" class="absolute top-2 right-2 text-neutral-500 hover:text-white w-6 h-6 rounded-md hover:bg-neutral-800 flex items-center justify-center cursor-pointer">
@@ -353,6 +397,7 @@
         </div>
     </main>
 
+    <!-- ANTI-ADBLOCK MODAL -->
     <div id="antiAdBlockModal" class="fixed inset-0 bg-black/95 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-neutral-950 border border-neutral-800 rounded-2xl max-w-md w-full p-6 text-center space-y-4 shadow-2xl">
             <div class="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 flex items-center justify-center mx-auto text-xl">
@@ -371,6 +416,7 @@
         </div>
     </div>
 
+    <!-- API KEY MODAL -->
     <div id="apiKeyModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-neutral-950 border border-neutral-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div class="flex items-center justify-between">
@@ -384,7 +430,7 @@
             <div class="space-y-4">
                 <div>
                     <label class="block text-xs font-medium text-neutral-300 mb-1.5">OpenRouter API Key</label>
-                    <input type="password" id="apiKeyInput" placeholder="sk-or-v1-..." class="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-white transition-colors font-mono">
+                    <input type="password" id="apiKeyInput" placeholder="sk-or-v1-..." class="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-white transition-colors font-mono" />
                     <p class="text-[11px] text-neutral-500 mt-1">Saved securely in your browser session.</p>
                     <p class="text-[11px] text-green-400 mt-1.5 flex items-center space-x-1 font-medium"><i class="fa-solid fa-shield-halved text-[10px]"></i><span>Don't worry, we keep your API keys safe.</span></p>
                 </div>
@@ -396,19 +442,10 @@
                             <p class="text-[11px] text-neutral-400">Get notified when AI finishes generating a response.</p>
                         </div>
                         <button id="notificationToggleBtn" onclick="toggleNotifications()" class="w-10 h-6 bg-neutral-800 rounded-full transition-colors relative p-1 cursor-pointer">
-                    <div id="imageModelContainer" class="hidden flex items-center space-x-2 flex-wrap">
-                        <select id="imageModelSelector" onchange="changeImageModel(this.value)" class="bg-neutral-900 border border-neutral-800 rounded-md px-2.5 py-1 text-xs text-neutral-300 focus:outline-none focus:border-neutral-600 cursor-pointer">
-                            <option value="flux">Model: Flux (Latest Best Quality)</option>
-                            <option value="flux-realism">Model: Flux Realism</option>
-                            <option value="turbo">Model: Turbo Fast</option>
-                        </select>
-                        <select id="imageAspectRatioSelector" onchange="changeAspectRatio(this.value)" class="bg-neutral-900 border border-neutral-800 rounded-md px-2.5 py-1 text-xs text-neutral-300 focus:outline-none focus:border-neutral-600 cursor-pointer">
-                            <option value="1:1">Square (1080x1080)</option>
-                            <option value="16:9">Landscape (1920x1080)</option>
-                            <option value="9:16">Portrait (1080x1920)</option>
-                        </select>
-                        <input type="text" id="negativePromptInput" placeholder="Exclude (e.g. blurry, deformed)..." class="bg-neutral-900 border border-neutral-800 rounded-md px-2.5 py-1 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-purple-600 w-44">
+                            <div id="notificationToggleThumb" class="w-4 h-4 bg-neutral-400 rounded-full transition-transform translate-x-0"></div>
+                        </button>
                     </div>
+
                 </div>
             </div>
             <div class="flex justify-end space-x-2 pt-2 border-t border-neutral-900">
@@ -418,28 +455,69 @@
         </div>
     </div>
 
-    <div id="renameModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-neutral-950 border border-neutral-800 rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl">
-            <h3 class="text-sm font-bold text-white">Rename Chat</h3>
-            <input type="text" id="renameInput" onkeydown="handleRenameKeydown(event)" placeholder="Enter new chat title..." class="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-2 text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-white transition-colors">
-            <div class="flex justify-end space-x-2 pt-1">
-                <button onclick="closeRenameModal()" class="px-3 py-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-xs font-medium text-neutral-300 transition-colors cursor-pointer">Cancel</button>
-                <button onclick="confirmRenameChat()" class="px-3 py-1.5 rounded-lg bg-white hover:bg-neutral-200 text-xs font-medium text-black transition-colors cursor-pointer">Save</button>
+    <!-- IMAGE EDIT MODAL -->
+    <div id="imageEditModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-[70] hidden items-center justify-center p-4">
+        <div class="bg-black border border-neutral-700 rounded-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto shadow-2xl">
+            <div class="flex items-center justify-between px-5 py-4 border-b border-neutral-800">
+                <div>
+                    <h3 class="text-base font-bold text-white">Edit Image</h3>
+                    <p class="text-[11px] text-neutral-400 mt-1">Make changes to this exact image.</p>
+                </div>
+                <button type="button" id="closeImageEditBtn" class="text-neutral-400 hover:text-white p-2 rounded-lg hover:bg-neutral-900 cursor-pointer">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="p-5">
+                <div class="grid md:grid-cols-[280px_1fr] gap-5">
+                    <div class="rounded-xl overflow-hidden border border-neutral-800 bg-neutral-950 aspect-square">
+                        <img id="editImagePreview" src="" alt="Image to edit" class="w-full h-full object-cover" />
+                    </div>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-medium text-white mb-2">Describe the changes</label>
+                            <textarea id="imageEditPrompt" rows="8" placeholder="Example: Change the sky to a sunset, keep the character, pose, face, and composition exactly the same." class="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3.5 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-white resize-none"></textarea>
+                        </div>
+                        <div>
+                            <div class="text-[11px] font-medium text-neutral-400 mb-2">Quick edits</div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button type="button" class="edit-chip px-3 py-2 rounded-lg bg-neutral-950 hover:bg-neutral-900 border border-neutral-800 text-[11px] text-neutral-300 cursor-pointer" data-edit="Change the background while keeping the main subject unchanged.">Background</button>
+                                <button type="button" class="edit-chip px-3 py-2 rounded-lg bg-neutral-950 hover:bg-neutral-900 border border-neutral-800 text-[11px] text-neutral-300 cursor-pointer" data-edit="Change the lighting to cinematic lighting while preserving the subject and composition.">Lighting</button>
+                                <button type="button" class="edit-chip px-3 py-2 rounded-lg bg-neutral-950 hover:bg-neutral-900 border border-neutral-800 text-[11px] text-neutral-300 cursor-pointer" data-edit="Change the image into a detailed anime illustration while preserving the same subject and pose.">Anime style</button>
+                                <button type="button" class="edit-chip px-3 py-2 rounded-lg bg-neutral-950 hover:bg-neutral-900 border border-neutral-800 text-[11px] text-neutral-300 cursor-pointer" data-edit="Make the colors more vibrant while keeping the subject and composition unchanged.">Vibrant colors</button>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between rounded-xl bg-neutral-950 border border-neutral-800 p-3">
+                            <div>
+                                <div class="text-xs font-medium text-white">Preserve everything else</div>
+                                <div class="text-[10px] text-neutral-500">Only apply the changes you describe.</div>
+                            </div>
+                            <button type="button" id="imageEditPreserveToggle" aria-pressed="true" class="relative w-11 h-6 rounded-full bg-white transition-colors cursor-pointer">
+                                <span class="absolute left-1 top-1 w-4 h-4 rounded-full bg-black transition-transform translate-x-5"></span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center justify-end gap-2 px-5 py-4 border-t border-neutral-800">
+                <button type="button" id="cancelImageEditBtn" class="px-4 py-2 rounded-xl bg-neutral-950 hover:bg-neutral-900 border border-neutral-800 text-xs font-medium text-neutral-300 cursor-pointer">Cancel</button>
+                <button type="button" id="applyImageEditBtn" class="px-4 py-2 rounded-xl bg-white hover:bg-neutral-200 text-black text-xs font-medium flex items-center gap-2 cursor-pointer">
+                    <i class="fa-solid fa-wand-magic-sparkles text-[10px]"></i><span>Generate Edit</span>
+                </button>
             </div>
         </div>
     </div>
 
+    <!-- JAVASCRIPT -->
     <script>
         let chats = JSON.parse(localStorage.getItem('parasite_ai_chats') || '[]');
         let globalMemory = JSON.parse(localStorage.getItem('parasite_ai_global_memory') || '[]');
         let userFeedback = JSON.parse(localStorage.getItem('parasite_ai_feedback') || '{"liked": [], "disliked": []}');
-        let currentImageModel = localStorage.getItem('parasite_ai_image_model') || 'flux';
+        let currentImageModel = localStorage.getItem('parasite_ai_image_model') || 'gpt-image-2';
         let currentAspectRatio = localStorage.getItem('parasite_ai_aspect_ratio') || '1:1';
         let notificationsEnabled = localStorage.getItem('parasite_ai_notifications') === 'true';
         let currentChatId = null;
         let webSearchMode = false;
         let imageGenMode = false;
-        let chatToRenameId = null;
         let attachedImage = null;
 
         let currentAbortController = null;
@@ -461,8 +539,10 @@
         const AUDIUS_API_BASE = 'https://api.audius.co/v1';
         let nextTrackPreloader = null;
 
-        const baseSystemPrompt = "You are Parasite Studio's an advanced, highly capable, and witty conversational AI assistant. You provide concise, engaging, and accurate responses. You can write code, analyze topics, and help with creative tasks.";
+        const baseSystemPrompt =
+            "You are Parasite Studio's an advanced, highly capable, and witty conversational AI assistant. You provide concise, engaging, and accurate responses. You can write code, analyze topics, and help with creative tasks.";
 
+        // ---- VIEW SWITCHING ----
         function switchView(viewName) {
             const chatCont = document.getElementById('chatContainer');
             const musicCont = document.getElementById('musicSection');
@@ -479,8 +559,10 @@
                 chatInputArea.classList.add('hidden');
 
                 document.getElementById('headerTitle').innerText = 'Music Stream';
-                musicNavBtn.className = 'w-full bg-white text-black font-medium py-2 px-3 rounded-lg flex items-center justify-center space-x-1.5 text-xs shadow-sm cursor-pointer';
-                gamesNavBtn.className = 'w-full bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 transition-colors font-medium py-2 px-3 rounded-lg flex items-center justify-center space-x-1.5 text-xs cursor-pointer';
+                musicNavBtn.className =
+                    'w-full bg-white text-black font-medium py-2 px-3 rounded-lg flex items-center justify-center space-x-1.5 text-xs shadow-sm cursor-pointer';
+                gamesNavBtn.className =
+                    'w-full bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 transition-colors font-medium py-2 px-3 rounded-lg flex items-center justify-center space-x-1.5 text-xs cursor-pointer';
 
                 if (playerBar && audioPlayer.src && !playerClosed) {
                     setPlayerMode(false);
@@ -497,8 +579,10 @@
                 chatInputArea.classList.add('hidden');
 
                 document.getElementById('headerTitle').innerText = 'Games';
-                musicNavBtn.className = 'w-full bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 transition-colors font-medium py-2 px-3 rounded-lg flex items-center justify-center space-x-1.5 text-xs cursor-pointer';
-                gamesNavBtn.className = 'w-full bg-white text-black font-medium py-2 px-3 rounded-lg flex items-center justify-center space-x-1.5 text-xs shadow-sm cursor-pointer';
+                musicNavBtn.className =
+                    'w-full bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 transition-colors font-medium py-2 px-3 rounded-lg flex items-center justify-center space-x-1.5 text-xs cursor-pointer';
+                gamesNavBtn.className =
+                    'w-full bg-white text-black font-medium py-2 px-3 rounded-lg flex items-center justify-center space-x-1.5 text-xs shadow-sm cursor-pointer';
             } else {
                 musicCont.classList.add('hidden');
                 gamesCont.classList.add('hidden');
@@ -506,10 +590,13 @@
                 chatInputArea.classList.remove('hidden');
 
                 document.getElementById('headerTitle').innerText =
-                    currentChatId ? (chats.find(c => c.id === currentChatId)?.title || 'Conversation') : 'Conversational Assistant';
+                    currentChatId ? (chats.find(c => c.id === currentChatId)?.title || 'Conversation') :
+                    'Conversational Assistant';
 
-                musicNavBtn.className = 'w-full bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 transition-colors font-medium py-2 px-3 rounded-lg flex items-center justify-center space-x-1.5 text-xs cursor-pointer';
-                gamesNavBtn.className = 'w-full bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 transition-colors font-medium py-2 px-3 rounded-lg flex items-center justify-center space-x-1.5 text-xs cursor-pointer';
+                musicNavBtn.className =
+                    'w-full bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 transition-colors font-medium py-2 px-3 rounded-lg flex items-center justify-center space-x-1.5 text-xs cursor-pointer';
+                gamesNavBtn.className =
+                    'w-full bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 transition-colors font-medium py-2 px-3 rounded-lg flex items-center justify-center space-x-1.5 text-xs cursor-pointer';
 
                 if (playerBar && audioPlayer.src && !playerClosed) {
                     setPlayerMode(true);
@@ -518,6 +605,7 @@
             }
         }
 
+        // ---- GAMES ----
         function openGame(gameName) {
             const gamePlayer = document.getElementById('gamePlayerSection');
             const gameFrame = document.getElementById('gameFrame');
@@ -537,6 +625,7 @@
             switchView('games');
         }
 
+        // ---- AUDIUS HELPERS ----
         function buildAudiusUrl(path, params = {}) {
             const query = new URLSearchParams({
                 ...params,
@@ -599,7 +688,8 @@
             } catch (err) {
                 console.error('Error fetching Audius music:', err);
                 if (reset) {
-                    gridEl.innerHTML = `<div class="col-span-full text-center text-xs text-red-400 py-8">Failed to load music. ${escapeHtml(err.message || 'Please try again.')}</div>`;
+                    gridEl.innerHTML =
+                        `<div class="col-span-full text-center text-xs text-red-400 py-8">Failed to load music. ${escapeHtml(err.message || 'Please try again.')}</div>`;
                 }
             } finally {
                 if (requestId === musicRequestId) {
@@ -619,21 +709,25 @@
             gridEl.innerHTML = '';
 
             if (musicTracks.length === 0) {
-                gridEl.innerHTML = '<div class="col-span-full text-center text-xs text-neutral-500 py-12">No tracks found. Try a different search or genre.</div>';
+                gridEl.innerHTML =
+                    '<div class="col-span-full text-center text-xs text-neutral-500 py-12">No tracks found. Try a different search or genre.</div>';
                 return;
             }
 
             musicTracks.forEach((track, idx) => {
                 const isCurrent = (currentTrackIndex === idx && isMusicPlaying);
                 const card = document.createElement('div');
-                card.className = `bg-neutral-950 border ${isCurrent ? 'border-white' : 'border-neutral-900 hover:border-neutral-700'} rounded-2xl p-3 flex items-center space-x-3 transition-colors cursor-pointer group`;
+                card.className =
+                    `bg-neutral-950 border ${isCurrent ? 'border-white' : 'border-neutral-900 hover:border-neutral-700'} rounded-2xl p-3 flex items-center space-x-3 transition-colors cursor-pointer group`;
                 card.onclick = () => playTrack(idx);
 
                 const artwork = track.artwork || track.cover_art || {};
-                const albumArt = typeof artwork === 'string'
-                    ? artwork
-                    : (artwork._150x150 || artwork['150x150'] || artwork._480x480 || artwork['480x480'] || artwork._1000x1000 || artwork['1000x1000'] || artwork._600x600 || artwork['600x600'] || track.image || track.thumbnail ||
-                       'https://placehold.co/120x120/111/fff?text=Music');
+                const albumArt = typeof artwork === 'string' ?
+                    artwork :
+                    (artwork._150x150 || artwork['150x150'] || artwork._480x480 || artwork['480x480'] || artwork
+                        ._1000x1000 || artwork['1000x1000'] || artwork._600x600 || artwork['600x600'] || track.image ||
+                        track.thumbnail ||
+                        'https://placehold.co/120x120/111/fff?text=Music');
                 const title = track.title || 'Untitled';
                 const artist = track.user?.name || track.user?.handle || 'Unknown artist';
                 const duration = Number(track.duration) || 0;
@@ -641,18 +735,18 @@
                 const durationSec = String(duration % 60).padStart(2, '0');
 
                 card.innerHTML = `
-                    <div class="relative w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-neutral-900 border border-neutral-800">
-                        <img src="${escapeHtml(albumArt)}" alt="${escapeHtml(title)}" class="w-full h-full object-cover group-hover:scale-105 transition-transform" onerror="this.onerror=null;this.src='https://placehold.co/100x100/111/fff?text=Track';" />
-                        <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                            <i class="fa-solid ${isCurrent ? 'fa-pause' : 'fa-play'} text-white text-xs"></i>
+                        <div class="relative w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-neutral-900 border border-neutral-800">
+                            <img src="${escapeHtml(albumArt)}" alt="${escapeHtml(title)}" class="w-full h-full object-cover group-hover:scale-105 transition-transform" onerror="this.onerror=null;this.src='https://placehold.co/100x100/111/fff?text=Track';" />
+                            <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <i class="fa-solid ${isCurrent ? 'fa-pause' : 'fa-play'} text-white text-xs"></i>
+                            </div>
                         </div>
-                    </div>
-                    <div class="flex-1 truncate">
-                        <h4 class="text-xs font-bold text-white truncate">${escapeHtml(title)}</h4>
-                        <p class="text-[11px] text-neutral-400 truncate">${escapeHtml(artist)}</p>
-                    </div>
-                    <span class="text-[10px] text-neutral-500 font-mono shrink-0">${durationMin}:${durationSec}</span>
-                `;
+                        <div class="flex-1 truncate">
+                            <h4 class="text-xs font-bold text-white truncate">${escapeHtml(title)}</h4>
+                            <p class="text-[11px] text-neutral-400 truncate">${escapeHtml(artist)}</p>
+                        </div>
+                        <span class="text-[10px] text-neutral-500 font-mono shrink-0">${durationMin}:${durationSec}</span>
+                    `;
                 gridEl.appendChild(card);
             });
 
@@ -660,7 +754,8 @@
                 const moreWrap = document.createElement('div');
                 moreWrap.className = 'col-span-full flex justify-center pt-2 pb-8';
                 const moreBtn = document.createElement('button');
-                moreBtn.className = 'px-4 py-2 rounded-xl bg-neutral-900 border border-neutral-800 text-xs text-neutral-300 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer';
+                moreBtn.className =
+                    'px-4 py-2 rounded-xl bg-neutral-900 border border-neutral-800 text-xs text-neutral-300 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer';
                 moreBtn.innerText = 'Load More Music';
                 moreBtn.onclick = () => loadMoreAudiusMusic();
                 moreWrap.appendChild(moreBtn);
@@ -775,9 +870,10 @@
             document.getElementById('playerArtistName').innerText = getTrackArtist(track);
             const playerArtwork = track.artwork || track.cover_art || {};
             document.getElementById('playerAlbumArt').src =
-                (typeof playerArtwork === 'string'
-                    ? playerArtwork
-                    : (playerArtwork._480x480 || playerArtwork['480x480'] || playerArtwork._150x150 || playerArtwork['150x150'] || playerArtwork._1000x1000 || playerArtwork['1000x1000'])) ||
+                (typeof playerArtwork === 'string' ?
+                    playerArtwork :
+                    (playerArtwork._480x480 || playerArtwork['480x480'] || playerArtwork._150x150 || playerArtwork[
+                        '150x150'] || playerArtwork._1000x1000 || playerArtwork['1000x1000'])) ||
                 track.image || track.thumbnail ||
                 'https://placehold.co/100x100/111/fff?text=Music';
 
@@ -941,12 +1037,29 @@
         function filterByGenre(genre, btnEl) {
             activeGenre = genre;
             document.querySelectorAll('.genre-btn').forEach(b => {
-                b.className = 'genre-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 shrink-0 transition-colors cursor-pointer';
+                b.className =
+                    'genre-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 shrink-0 transition-colors cursor-pointer';
             });
-            btnEl.className = 'genre-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-black shrink-0 transition-colors cursor-pointer';
+            btnEl.className =
+                'genre-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-black shrink-0 transition-colors cursor-pointer';
 
             const searchQuery = document.getElementById('musicSearchInput').value.trim();
             fetchAudiusMusic(searchQuery, activeGenre, true);
+        }
+
+        function initCustomEditAndRenameUI() {
+            document.getElementById('closeImageEditBtn')?.addEventListener('click', closeImageEditUI);
+            document.getElementById('cancelImageEditBtn')?.addEventListener('click', closeImageEditUI);
+            document.getElementById('applyImageEditBtn')?.addEventListener('click', submitImageEdit);
+
+            document.querySelectorAll('.edit-chip').forEach(btn => {
+                btn.addEventListener('click', () => insertImageEditPreset(btn.dataset.edit || ''));
+            });
+
+            document.getElementById('imageEditPreserveToggle')?.addEventListener('click', () => {
+                imageEditPreserve = !imageEditPreserve;
+                updateImageEditPreserveUI();
+            });
         }
 
         window.addEventListener('resize', () => {
@@ -956,11 +1069,10 @@
         function isPromptSafe(text) {
             if (!text) return true;
             const lower = text.toLowerCase();
-            
-            // Restricted harmful/explicit words for chat mode (allowing conversational cuss words and hostility)
+
             const strictForbiddenWords = [
                 'porn', 'nsfw', 'naked', 'nude', 'explicit', 'erotic', 'rape', 'incest', 'bestiality',
-                'prostitute', 'escort', 'orgasm', 'fetish', 'bdsm', 'gore', 'terrorist', 'torture', 
+                'prostitute', 'escort', 'orgasm', 'fetish', 'bdsm', 'gore', 'terrorist', 'torture',
                 'corpse', 'slaughter', 'massacre', 'behead', 'overdose', 'ransomware', 'phishing'
             ];
 
@@ -973,31 +1085,14 @@
             return true;
         }
 
-        function isImagePromptSafe(text) {
-            if (!text) return true;
-            const lower = text.toLowerCase();
-            
-            // Full restrictions for image generation including profanity
-            const strictForbiddenWords = [
-                'porn', 'nsfw', 'naked', 'nude', 'explicit', 'erotic', 'rape', 'incest', 'bestiality',
-                'prostitute', 'escort', 'orgasm', 'fetish', 'bdsm', 'gore', 'terrorist', 'torture', 
-                'corpse', 'slaughter', 'massacre', 'behead', 'overdose', 'ransomware', 'phishing',
-                'pussy', 'cock', 'dick', 'fuck', 'shit', 'bitch', 'whore', 'slut'
-            ];
-
-            const words = lower.split(/[^a-z0-9]+/);
-            for (const word of strictForbiddenWords) {
-                if (words.includes(word)) {
-                    return false;
-                }
-            }
-            return true;
-        }
+        // ---- IMAGE FILTER REMOVED ----
+        // The function isImagePromptSafe is no longer used.
+        // All image prompts are now allowed.
 
         window.onload = function() {
             document.getElementById('imageModelSelector').value = currentImageModel;
             document.getElementById('imageAspectRatioSelector').value = currentAspectRatio;
-            
+
             let savedApiKey = localStorage.getItem('openrouter_api_key') || '';
             document.getElementById('apiKeyInput').value = savedApiKey;
 
@@ -1006,6 +1101,7 @@
             updateNotificationUI();
             checkAdBlocker();
             initDraggablePlayer();
+            initCustomEditAndRenameUI();
         };
 
         async function toggleNotifications() {
@@ -1082,7 +1178,7 @@
             }
             setGeneratingState(false);
             document.getElementById('statusDot').className = 'w-2 h-2 rounded-full bg-neutral-600 transition-colors';
-            
+
             const loadingEls = document.querySelectorAll('[id^="loading_"], [id^="img_msg_"]');
             loadingEls.forEach(el => {
                 if (el.querySelector('.fa-spinner')) el.remove();
@@ -1099,7 +1195,8 @@
             document.body.appendChild(bait);
 
             setTimeout(() => {
-                if (bait.offsetParent === null || bait.offsetHeight === 0 || window.getComputedStyle(bait).display === 'none') {
+                if (bait.offsetParent === null || bait.offsetHeight === 0 || window.getComputedStyle(bait)
+                    .display === 'none') {
                     document.getElementById('antiAdBlockModal').classList.remove('hidden');
                 }
                 bait.remove();
@@ -1116,9 +1213,10 @@
             document.body.appendChild(bait);
 
             setTimeout(() => {
-                const isBlocked = (bait.offsetParent === null || bait.offsetHeight === 0 || window.getComputedStyle(bait).display === 'none');
+                const isBlocked = (bait.offsetParent === null || bait.offsetHeight === 0 || window
+                    .getComputedStyle(bait).display === 'none');
                 bait.remove();
-                
+
                 const errMsg = document.getElementById('adblockErrorMsg');
                 if (isBlocked) {
                     if (errMsg) errMsg.classList.remove('hidden');
@@ -1157,11 +1255,12 @@
             list.innerHTML = '';
             globalMemory.forEach((mem, idx) => {
                 const div = document.createElement('div');
-                div.className = 'flex items-center justify-between bg-neutral-900 border border-neutral-800 p-2 rounded-lg text-xs text-neutral-300';
+                div.className =
+                    'flex items-center justify-between bg-neutral-900 border border-neutral-800 p-2 rounded-lg text-xs text-neutral-300';
                 div.innerHTML = `
-                    <span class="truncate pr-2">${escapeHtml(mem)}</span>
-                    <button onclick="deleteMemoryItem(${idx})" class="text-neutral-500 hover:text-red-400 p-1 cursor-pointer shrink-0"><i class="fa-solid fa-trash text-[10px]"></i></button>
-                `;
+                        <span class="truncate pr-2">${escapeHtml(mem)}</span>
+                        <button onclick="deleteMemoryItem(${idx})" class="text-neutral-500 hover:text-red-400 p-1 cursor-pointer shrink-0"><i class="fa-solid fa-trash text-[10px]"></i></button>
+                    `;
                 list.appendChild(div);
             });
         }
@@ -1214,15 +1313,17 @@
             });
         }
 
+        // ---- CHAT HISTORY (rename button removed) ----
         function renderChatHistory() {
             const list = document.getElementById('chatHistoryList');
             list.innerHTML = '';
             chats.forEach(chat => {
                 const isActive = chat.id === currentChatId;
                 const div = document.createElement('div');
-                div.className = `group flex items-center justify-between px-3 py-2 rounded-lg text-xs cursor-pointer transition-colors ${isActive ? 'bg-neutral-900 text-white font-medium' : 'text-neutral-400 hover:bg-neutral-900/50 hover:text-white'}`;
+                div.className =
+                    `group flex items-center justify-between px-3 py-2 rounded-lg text-xs cursor-pointer transition-colors ${isActive ? 'bg-neutral-900 text-white font-medium' : 'text-neutral-400 hover:bg-neutral-900/50 hover:text-white'}`;
                 div.onclick = () => loadChat(chat.id);
-                
+
                 const span = document.createElement('span');
                 span.className = 'truncate pr-2 flex-1';
                 span.innerText = chat.title;
@@ -1230,16 +1331,6 @@
 
                 const actionsDiv = document.createElement('div');
                 actionsDiv.className = 'opacity-0 group-hover:opacity-100 flex items-center space-x-1 shrink-0';
-
-                const renameBtn = document.createElement('button');
-                renameBtn.className = 'text-neutral-500 hover:text-white p-1 cursor-pointer';
-                renameBtn.title = 'Rename chat';
-                renameBtn.innerHTML = '<i class="fa-solid fa-pen text-[10px]"></i>';
-                renameBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    renameChatModal(chat.id);
-                };
-                actionsDiv.appendChild(renameBtn);
 
                 const delBtn = document.createElement('button');
                 delBtn.className = 'text-neutral-500 hover:text-white p-1 cursor-pointer';
@@ -1264,47 +1355,6 @@
                 document.getElementById('headerTitle').innerText = chat.title;
                 renderChatHistory();
             }
-        }
-
-        function renameChatModal(id) {
-            chatToRenameId = id;
-            const chat = chats.find(c => c.id === id);
-            if (!chat) return;
-            const modal = document.getElementById('renameModal');
-            const input = document.getElementById('renameInput');
-            input.value = chat.title;
-            modal.classList.remove('hidden');
-            input.focus();
-        }
-
-        function closeRenameModal() {
-            document.getElementById('renameModal').classList.add('hidden');
-            chatToRenameId = null;
-        }
-
-        function handleRenameKeydown(event) {
-            if (event.key === 'Enter') {
-                confirmRenameChat();
-            } else if (event.key === 'Escape') {
-                closeRenameModal();
-            }
-        }
-
-        function confirmRenameChat() {
-            const input = document.getElementById('renameInput');
-            const val = input.value.trim();
-            if (val && chatToRenameId) {
-                const chat = chats.find(c => c.id === chatToRenameId);
-                if (chat) {
-                    chat.title = val;
-                    saveChats();
-                    renderChatHistory();
-                    if (currentChatId === chatToRenameId) {
-                        document.getElementById('headerTitle').innerText = val;
-                    }
-                }
-            }
-            closeRenameModal();
         }
 
         function deleteChat(id) {
@@ -1347,10 +1397,12 @@
             const btn = document.getElementById('webSearchToggle');
             if (webSearchMode) {
                 ind.className = 'w-1.5 h-1.5 rounded-full bg-green-400';
-                btn.className = 'text-xs px-2.5 py-1 rounded-md border border-neutral-700 bg-neutral-800 text-white transition-colors flex items-center space-x-1.5 cursor-pointer';
+                btn.className =
+                    'text-xs px-2.5 py-1 rounded-md border border-neutral-700 bg-neutral-800 text-white transition-colors flex items-center space-x-1.5 cursor-pointer';
             } else {
                 ind.className = 'w-1.5 h-1.5 rounded-full bg-neutral-600';
-                btn.className = 'text-xs px-2.5 py-1 rounded-md border border-neutral-800 bg-neutral-900 text-neutral-400 hover:text-white transition-colors flex items-center space-x-1.5 cursor-pointer';
+                btn.className =
+                    'text-xs px-2.5 py-1 rounded-md border border-neutral-800 bg-neutral-900 text-neutral-400 hover:text-white transition-colors flex items-center space-x-1.5 cursor-pointer';
             }
         }
 
@@ -1363,12 +1415,14 @@
 
             if (imageGenMode) {
                 ind.className = 'w-1.5 h-1.5 rounded-full bg-purple-400';
-                btn.className = 'text-xs px-2.5 py-1 rounded-md border border-purple-800 bg-purple-950 text-white transition-colors flex items-center space-x-1.5 cursor-pointer';
+                btn.className =
+                    'text-xs px-2.5 py-1 rounded-md border border-purple-800 bg-purple-950 text-white transition-colors flex items-center space-x-1.5 cursor-pointer';
                 modelContainer.classList.remove('hidden');
                 input.placeholder = 'Describe your image in rich detail (e.g., cinematic lighting, 8k)...';
             } else {
                 ind.className = 'w-1.5 h-1.5 rounded-full bg-neutral-600';
-                btn.className = 'text-xs px-2.5 py-1 rounded-md border border-neutral-800 bg-neutral-900 text-neutral-400 hover:text-white transition-colors flex items-center space-x-1.5 cursor-pointer';
+                btn.className =
+                    'text-xs px-2.5 py-1 rounded-md border border-neutral-800 bg-neutral-900 text-neutral-400 hover:text-white transition-colors flex items-center space-x-1.5 cursor-pointer';
                 modelContainer.classList.add('hidden');
                 input.placeholder = 'Type your message here or describe an image...';
             }
@@ -1417,7 +1471,8 @@
             renderAttachmentPreview();
             const input = document.getElementById('userInput');
             input.disabled = false;
-            input.placeholder = imageGenMode ? 'Describe your image in rich detail...' : 'Type your message here or describe an image...';
+            input.placeholder = imageGenMode ? 'Describe your image in rich detail...' :
+                'Type your message here or describe an image...';
             input.focus();
         }
 
@@ -1431,17 +1486,17 @@
             }
             container.classList.remove('hidden');
             container.innerHTML = `
-                <div class="inline-flex items-center space-x-2 bg-neutral-900 border border-neutral-800 rounded-lg p-1.5 pr-3">
-                    <img src="${escapeHtml(attachedImage.url)}" alt="Attachment" class="w-10 h-10 object-cover rounded-md border border-neutral-700">
-                    <div class="flex flex-col text-left">
-                        <span class="text-xs font-medium text-white truncate max-w-[180px]">${escapeHtml(attachedImage.name)}</span>
-                        <span class="text-[10px] text-neutral-400">Attached image</span>
+                    <div class="inline-flex items-center space-x-2 bg-neutral-900 border border-neutral-800 rounded-lg p-1.5 pr-3">
+                        <img src="${escapeHtml(attachedImage.url)}" alt="Attachment" class="w-10 h-10 object-cover rounded-md border border-neutral-700" />
+                        <div class="flex flex-col text-left">
+                            <span class="text-xs font-medium text-white truncate max-w-[180px]">${escapeHtml(attachedImage.name)}</span>
+                            <span class="text-[10px] text-neutral-400">Attached image</span>
+                        </div>
+                        <button onclick="removeAttachment()" class="text-neutral-400 hover:text-white p-1 ml-2 cursor-pointer" title="Remove attachment">
+                            <i class="fa-solid fa-xmark text-xs"></i>
+                        </button>
                     </div>
-                    <button onclick="removeAttachment()" class="text-neutral-400 hover:text-white p-1 ml-2 cursor-pointer" title="Remove attachment">
-                        <i class="fa-solid fa-xmark text-xs"></i>
-                    </button>
-                </div>
-            `;
+                `;
         }
 
         function handleKeydown(event) {
@@ -1456,6 +1511,7 @@
             textarea.style.height = Math.min(textarea.scrollHeight, 128) + 'px';
         }
 
+        // ---- SEND MESSAGE ----
         async function sendMessage() {
             if (isGenerating) return;
 
@@ -1463,14 +1519,17 @@
             const text = input.value.trim();
             if (!text && !attachedImage) return;
 
-            const selfHarmKeywords = ['hurt myself', 'suicide', 'kill myself', 'end my life', 'want to die', 'self harm', 'cutting myself', 'hurt self', 'hurt me'];
+            const selfHarmKeywords = ['hurt myself', 'suicide', 'kill myself', 'end my life', 'want to die', 'self harm',
+                'cutting myself', 'hurt self', 'hurt me'
+            ];
             const lowerText = text.toLowerCase();
             const isSelfHarm = selfHarmKeywords.some(kw => lowerText.includes(kw));
 
-            if (!isPromptSafe(text) || (imageGenMode && !isImagePromptSafe(text)) || isSelfHarm) {
+            // General safety check (non-image) remains.
+            if (!isPromptSafe(text) || isSelfHarm) {
                 input.value = '';
                 input.style.height = 'auto';
-                
+
                 let chat = chats.find(c => c.id === currentChatId);
                 if (!chat) {
                     startNewChat();
@@ -1484,17 +1543,19 @@
                 }
 
                 chat.messages.push({ role: 'user', content: text, feedback: null });
-                
-                const refusalResponse = isSelfHarm 
-                    ? "I hear how much pain you're going through right now, and your life truly matters. Please know you don't have to carry this alone. If you are having thoughts of hurting yourself, please reach out for support immediately:\n\n- **Call or text 988** to reach the Suicide & Crisis Lifeline (free, confidential, and available 24/7 in the US and Canada).\n- **Text HOME to 741741** to connect with the Crisis Text Line.\n- **Call 911** or go to the nearest emergency room if you are in immediate danger.\n\nPlease talk to a trusted adult, professional, or call one of these resources right away."
-                    : "Your request can not be generated";
-                
+
+                const refusalResponse = isSelfHarm ?
+                    "I hear how much pain you're going through right now, and your life truly matters. Please know you don't have to carry this alone. If you are having thoughts of hurting yourself, please reach out for support immediately:\n\n- **Call or text 988** to reach the Suicide & Crisis Lifeline (free, confidential, and available 24/7 in the US and Canada).\n- **Text HOME to 741741** to connect with the Crisis Text Line.\n- **Call 911** or go to the nearest emergency room if you are in immediate danger.\n\nPlease talk to a trusted adult, professional, or call one of these resources right away." :
+                    "Your request can not be generated";
+
                 chat.messages.push({ role: 'assistant', content: refusalResponse, feedback: null });
                 saveChats();
                 renderActiveChat();
                 triggerNotification();
                 return;
             }
+
+            // No image safety check; proceed even for image generation.
 
             if (text.toLowerCase().includes('remember')) {
                 if (!globalMemory.includes(text)) {
@@ -1511,12 +1572,13 @@
 
             input.value = '';
             input.style.height = 'auto';
-            
+
             const currentImg = attachedImage;
             attachedImage = null;
             renderAttachmentPreview();
             input.disabled = false;
-            input.placeholder = imageGenMode ? 'Describe your image in rich detail...' : 'Type your message here or describe an image...';
+            input.placeholder = imageGenMode ? 'Describe your image in rich detail...' :
+                'Type your message here or describe an image...';
 
             let chat;
             chat = chats.find(c => c.id === currentChatId);
@@ -1532,10 +1594,10 @@
                 renderChatHistory();
             }
 
-            const userMsgObj = { 
-                role: 'user', 
-                content: text || (currentImg ? 'Analyze this attached image.' : ''), 
-                feedback: null 
+            const userMsgObj = {
+                role: 'user',
+                content: text || (currentImg ? 'Analyze this attached image.' : ''),
+                feedback: null
             };
             if (currentImg) {
                 userMsgObj.image = currentImg.url;
@@ -1544,11 +1606,12 @@
             chat.messages.push(userMsgObj);
             saveChats();
             renderChatHistory();
-            
+
             appendMessageNode('user', userMsgObj.content, false, chat.messages.length - 1, null, userMsgObj.image || null);
 
             if (isSelfHarm) {
-                const crisisResponse = "I hear how much pain you're going through right now, and your life truly matters. Please know you don't have to carry this alone. If you are having thoughts of hurting yourself, please reach out for support immediately:\n\n- **Call or text 988** to reach the Suicide & Crisis Lifeline (free, confidential, and available 24/7 in the US and Canada).\n- **Text HOME to 741741** to connect with the Crisis Text Line.\n- **Call 911** or go to the nearest emergency room if you are in immediate danger.\n\nPlease talk to a trusted adult, professional, or call one of these resources right away.";
+                const crisisResponse =
+                    "I hear how much pain you're going through right now, and your life truly matters. Please know you don't have to carry this alone. If you are having thoughts of hurting yourself, please reach out for support immediately:\n\n- **Call or text 988** to reach the Suicide & Crisis Lifeline (free, confidential, and available 24/7 in the US and Canada).\n- **Text HOME to 741741** to connect with the Crisis Text Line.\n- **Call 911** or go to the nearest emergency room if you are in immediate danger.\n\nPlease talk to a trusted adult, professional, or call one of these resources right away.";
                 chat.messages.push({ role: 'assistant', content: crisisResponse, feedback: null });
                 saveChats();
                 appendMessageNode('assistant', crisisResponse, true, chat.messages.length - 1, null, null);
@@ -1565,6 +1628,7 @@
             }
         }
 
+        // ---- ADVANCED IMAGE GENERATION (filter removed) ----
         async function executeAdvancedImageGeneration(promptText) {
             let chat = chats.find(c => c.id === currentChatId);
             if (!chat) {
@@ -1572,98 +1636,72 @@
                 return;
             }
 
-            if (!isImagePromptSafe(promptText)) {
-                setGeneratingState(false);
-                const refusalMsg = "Your request can not be generated";
-                chat.messages.push({ role: 'assistant', content: refusalMsg, feedback: null });
-                saveChats();
-                appendMessageNode('assistant', refusalMsg, false, chat.messages.length - 1, null, null);
-                triggerNotification();
-                return;
-            }
-
-            let modelName = currentImageModel; 
-            let width = 1080;
-            let height = 1080;
-
-            if (currentAspectRatio === '16:9') {
-                width = 1920;
-                height = 1080;
-            } else if (currentAspectRatio === '9:16') {
-                width = 1080;
-                height = 1920;
-            }
-
+            const modelName = currentImageModel || 'gpt-image-2';
+            const ratioMap = {
+                '1:1': { w: 1, h: 1 },
+                '16:9': { w: 16, h: 9 },
+                '9:16': { w: 9, h: 16 }
+            };
+            const ratio = ratioMap[currentAspectRatio] || ratioMap['1:1'];
             const negativePrompt = document.getElementById('negativePromptInput')?.value.trim() || '';
-            
             let enhancedPrompt = promptText;
-            if (negativePrompt) {
-                enhancedPrompt += `, avoiding ${negativePrompt}`;
-            }
+            if (negativePrompt) enhancedPrompt += ` Avoid: ${negativePrompt}`;
 
             const modelDisplayTitles = {
-                'flux': 'Flux (Latest Best Quality)',
-                'flux-realism': 'Flux Realism',
-                'turbo': 'Turbo Fast'
+                'gpt-image-2': 'Puter • GPT Image 2',
+                'gemini-3-pro-image': 'Puter • Gemini 3 Pro Image',
+                'grok-imagine-image': 'Puter • Grok Imagine Image'
             };
-            const modelDisplayTitle = modelDisplayTitles[currentImageModel] || 'Flux Engine';
-            
-            const encodedPrompt = encodeURIComponent(enhancedPrompt);
-            const randomSeed = Math.floor(Math.random() * 1000000000);
-            const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?model=${modelName}&width=${width}&height=${height}&nologo=true&seed=${randomSeed}`;
-
-            const messageId = appendBlurredLoadingMessage(modelDisplayTitle, promptText, imageUrl);
+            const modelDisplayTitle = modelDisplayTitles[modelName] || 'Puter Image Generator';
+            const messageId = appendBlurredLoadingMessage(modelDisplayTitle, promptText, null);
             document.getElementById('statusDot').className = 'w-2 h-2 rounded-full bg-purple-500 transition-colors';
 
             try {
+                if (typeof puter === 'undefined' || !puter.ai || !puter.ai.txt2img) {
+                    throw new Error('Puter.js did not load. Check your internet connection and reload the page.');
+                }
+
                 currentAbortController = new AbortController();
-                
-                let computeProgress = 10;
-                const progressInterval = setInterval(() => {
-                    computeProgress = Math.min(95, computeProgress + Math.floor(Math.random() * 12) + 5);
-                    const progressBar = document.getElementById(`progressBar_${messageId}`);
-                    const progressText = document.getElementById(`progressText_${messageId}`);
-                    if (progressBar) progressBar.style.width = computeProgress + '%';
-                    if (progressText) progressText.innerText = computeProgress + '%';
-                }, 200);
+                const progressText = document.getElementById(`progressText_${messageId}`);
+                const progressBar = document.getElementById(`progressBar_${messageId}`);
+                if (progressText) progressText.innerText = 'Generating...';
+                if (progressBar) progressBar.style.width = '35%';
 
-                currentAbortController.signal.addEventListener('abort', () => {
-                    clearInterval(progressInterval);
-                });
+                const options = {
+                    model: modelName,
+                    ratio: ratio
+                };
+                if (modelName === 'gemini-3-pro-image') {
+                    options.provider = 'gemini';
+                    options.quality = '1K';
+                } else if (modelName === 'grok-imagine-image') {
+                    options.provider = 'xai';
+                    options.quality = '1k';
+                } else {
+                    options.provider = 'openai-image-generation';
+                    options.quality = 'high';
+                }
 
-                await new Promise((resolve, reject) => {
-                    const img = new Image();
-                    img.onload = () => {
-                        clearInterval(progressInterval);
-                        resolve();
-                    };
-                    img.onerror = () => {
-                        clearInterval(progressInterval);
-                        reject(new Error('Failed to render image. Please try a different description.'));
-                    };
-                    img.src = imageUrl;
-                    if (currentAbortController.signal.aborted) {
-                        clearInterval(progressInterval);
-                        reject(new Error('Generation aborted by user.'));
-                    }
-                });
+                const image = await puter.ai.txt2img(enhancedPrompt, options);
+                if (!image || !image.src) throw new Error('Puter returned no image.');
+                if (currentAbortController.signal.aborted) throw new Error('Generation aborted by user.');
 
+                if (progressBar) progressBar.style.width = '100%';
+                if (progressText) progressText.innerText = '100%';
+
+                const imageUrl = image.src;
                 const messageContent = `[IMAGE:${imageUrl}:${promptText}]`;
                 document.getElementById('statusDot').className = 'w-2 h-2 rounded-full bg-neutral-600 transition-colors';
-                
+
                 chat.messages.push({ role: 'assistant', content: messageContent, feedback: null });
                 saveChats();
-
                 finalizeBlurredMessage(messageId, imageUrl, promptText, chat.messages.length - 1);
                 triggerNotification();
-
             } catch (error) {
                 document.getElementById('statusDot').className = 'w-2 h-2 rounded-full bg-neutral-600 transition-colors';
-                const el = document.getElementById(messageId);
-                if (el) el.remove();
-
+                document.getElementById(messageId)?.remove();
                 if (error.message !== 'Generation aborted by user.') {
-                    const errorMsg = `Error generating image: ${error.message}`;
+                    const errorMsg = `Error generating image with Puter: ${error.message || 'Unknown error'}`;
                     chat.messages.push({ role: 'assistant', content: errorMsg, feedback: null });
                     saveChats();
                     appendMessageNode('assistant', errorMsg, false, chat.messages.length - 1, null);
@@ -1692,29 +1730,30 @@
             containerDiv.className = 'w-full';
 
             const bubble = document.createElement('div');
-            bubble.className = 'rounded-2xl p-4 text-xs bg-neutral-950 border border-neutral-800 text-neutral-200 space-y-3 shadow-xl';
-            
+            bubble.className =
+                'rounded-2xl p-4 text-xs bg-neutral-950 border border-neutral-800 text-neutral-200 space-y-3 shadow-xl';
+
             bubble.innerHTML = `
-                <div class="flex items-center justify-between border-b border-neutral-900 pb-2">
-                    <div class="flex items-center space-x-2">
-                        <span class="font-bold text-white tracking-wide">Generating Image</span>
+                    <div class="flex items-center justify-between border-b border-neutral-900 pb-2">
+                        <div class="flex items-center space-x-2">
+                            <span class="font-bold text-white tracking-wide">Generating Image</span>
+                        </div>
+                        <span class="text-[10px] text-purple-400 font-mono">${escapeHtml(modelTitle)}</span>
                     </div>
-                    <span class="text-[10px] text-purple-400 font-mono">${escapeHtml(modelTitle)}</span>
-                </div>
-                <div class="space-y-2">
-                    <div class="text-neutral-400 truncate">Prompt: <span class="italic text-white">"${escapeHtml(promptText)}"</span></div>
-                    
-                    <div class="relative rounded-xl overflow-hidden border border-neutral-800 bg-neutral-900 aspect-square max-w-sm mx-auto shadow-2xl">
-                        <img src="${imageUrl}" alt="Generating preview" class="w-full h-full object-cover filter blur-xl opacity-50" />
-                        <div class="absolute inset-0 bg-black/60 flex flex-col items-center justify-center p-6 text-center space-y-3">
-                            <div class="w-full bg-neutral-900 h-2 rounded-full overflow-hidden border border-neutral-800 max-w-[220px]">
-                                <div id="progressBar_${messageId}" class="bg-purple-600 h-full w-[10%] transition-all duration-300"></div>
+                    <div class="space-y-2">
+                        <div class="text-neutral-400 truncate">Prompt: <span class="italic text-white">"${escapeHtml(promptText)}"</span></div>
+
+                        <div class="relative rounded-xl overflow-hidden border border-neutral-800 bg-neutral-900 aspect-square max-w-sm mx-auto shadow-2xl">
+                            <img src="${imageUrl}" alt="Generating preview" class="w-full h-full object-cover filter blur-xl opacity-50" />
+                            <div class="absolute inset-0 bg-black/60 flex flex-col items-center justify-center p-6 text-center space-y-3">
+                                <div class="w-full bg-neutral-900 h-2 rounded-full overflow-hidden border border-neutral-800 max-w-[220px]">
+                                    <div id="progressBar_${messageId}" class="bg-purple-600 h-full w-[10%] transition-all duration-300"></div>
+                                </div>
+                                <p class="text-xs text-neutral-300 font-medium">Creating your image (<span id="progressText_${messageId}">10%</span>)...</p>
                             </div>
-                            <p class="text-xs text-neutral-300 font-medium">Creating your image (<span id="progressText_${messageId}">10%</span>)...</p>
                         </div>
                     </div>
-                </div>
-            `;
+                `;
 
             containerDiv.appendChild(bubble);
             wrapper.appendChild(containerDiv);
@@ -1731,24 +1770,152 @@
             if (!containerDiv) return;
 
             containerDiv.innerHTML = `
-                <div class="rounded-2xl p-4 text-xs bg-neutral-950 border border-neutral-800 text-neutral-200 space-y-3 shadow-xl">
-                    <p class="text-xs text-neutral-400">Generated image for: <span class="italic text-white">"${escapeHtml(promptText)}"</span></p>
-                    <div class="rounded-xl overflow-hidden border border-neutral-800 bg-neutral-900 aspect-square max-w-sm mx-auto shadow-2xl transition-all duration-700">
-                        <img src="${imageUrl}" alt="${escapeHtml(promptText)}" class="w-full h-full object-cover animate-fade-in" onerror="this.onerror=null;this.src='https://placehold.co/600x600/111/fff?text=Image+Load+Failed';" />
+                    <div class="rounded-2xl p-4 text-xs bg-neutral-950 border border-neutral-800 text-neutral-200 space-y-3 shadow-xl">
+                        <p class="text-xs text-neutral-400">Generated image for: <span class="italic text-white">"${escapeHtml(promptText)}"</span></p>
+                        <div class="rounded-xl overflow-hidden border border-neutral-800 bg-neutral-900 aspect-square max-w-sm mx-auto shadow-2xl transition-all duration-700">
+                            <img src="${imageUrl}" alt="${escapeHtml(promptText)}" class="w-full h-full object-cover animate-fade-in" onerror="this.onerror=null;this.src='https://placehold.co/600x600/111/fff?text=Image+Load+Failed';" />
+                        </div>
+                        <div class="flex items-center space-x-2 pt-1">
+                            <button onclick="openImageEditUI(this.dataset.url, this.dataset.prompt)" data-url="${escapeHtml(imageUrl)}" data-prompt="${escapeHtml(promptText)}" class="bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-200 font-medium px-3 py-1.5 rounded-lg text-xs flex items-center space-x-1.5 transition-colors cursor-pointer"><i class="fa-solid fa-pen-to-square text-[10px]"></i><span>Edit</span></button>
+                            <button onclick="downloadGeneratedImage(this)" data-url="${escapeHtml(imageUrl)}" data-prompt="${escapeHtml(promptText)}" class="bg-white hover:bg-neutral-200 text-black font-medium px-3 py-1.5 rounded-lg text-xs flex items-center space-x-1.5 transition-colors cursor-pointer"><i class="fa-solid fa-download text-[10px]"></i><span>Download PNG</span></button>
+                        </div>
                     </div>
-                    <div class="flex items-center space-x-2 pt-1">
-                        <button onclick="downloadGeneratedImage(this)" data-url="${escapeHtml(imageUrl)}" data-prompt="${escapeHtml(promptText)}" class="bg-white hover:bg-neutral-200 text-black font-medium px-3 py-1.5 rounded-lg text-xs flex items-center space-x-1.5 transition-colors cursor-pointer">
-                            <i class="fa-solid fa-download text-[10px]"></i>
-                            <span>Download PNG</span>
-                        </button>
-                    </div>
-                </div>
-            `;
+                `;
 
             appendMessageActions(containerDiv, 'assistant', `[IMAGE:${imageUrl}:${promptText}]`, messageIndex, false, null);
             scrollToBottom();
         }
 
+        let imageBeingEdited = null;
+        let imageBeingEditedPrompt = '';
+        let imageEditPreserve = true;
+
+        function openImageEditUI(imageUrl, originalPrompt = '') {
+            imageBeingEdited = imageUrl;
+            imageBeingEditedPrompt = originalPrompt || '';
+            imageEditPreserve = true;
+
+            const modal = document.getElementById('imageEditModal');
+            const preview = document.getElementById('editImagePreview');
+            const input = document.getElementById('imageEditPrompt');
+            const toggle = document.getElementById('imageEditPreserveToggle');
+
+            if (preview) preview.src = imageUrl;
+            if (input) {
+                input.value = '';
+                input.focus();
+            }
+            updateImageEditPreserveUI();
+            if (modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
+        }
+
+        function closeImageEditUI() {
+            imageBeingEdited = null;
+            imageBeingEditedPrompt = '';
+            const modal = document.getElementById('imageEditModal');
+            if (modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        }
+
+        function updateImageEditPreserveUI() {
+            const toggle = document.getElementById('imageEditPreserveToggle');
+            if (!toggle) return;
+            const knob = toggle.querySelector('span');
+            toggle.setAttribute('aria-pressed', String(imageEditPreserve));
+            toggle.classList.toggle('bg-white', imageEditPreserve);
+            toggle.classList.toggle('bg-neutral-800', !imageEditPreserve);
+            if (knob) {
+                knob.classList.toggle('bg-black', imageEditPreserve);
+                knob.classList.toggle('bg-neutral-500', !imageEditPreserve);
+                knob.classList.toggle('translate-x-5', imageEditPreserve);
+                knob.classList.toggle('translate-x-0', !imageEditPreserve);
+            }
+        }
+
+        function insertImageEditPreset(text) {
+            const input = document.getElementById('imageEditPrompt');
+            if (!input) return;
+            input.value = input.value.trim() ? input.value.trim() + ' ' + text : text;
+            input.focus();
+        }
+
+        async function submitImageEdit() {
+            if (!imageBeingEdited) return;
+            const input = document.getElementById('imageEditPrompt');
+            const btn = document.getElementById('applyImageEditBtn');
+            const userEdit = input?.value.trim() || '';
+            if (!userEdit) { input?.focus(); return; }
+
+            const sourceUrl = imageBeingEdited;
+            const preserve = imageEditPreserve;
+            const editPrompt = preserve
+                ? userEdit + ' Preserve the original subject, identity, pose, composition, camera framing, and all details not explicitly changed.'
+                : userEdit;
+
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-[10px]"></i><span>Generating...</span>';
+            }
+
+            let chat = chats.find(c => c.id === currentChatId);
+            if (!chat) { startNewChat(); chat = chats.find(c => c.id === currentChatId); }
+            if (!chat) {
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles text-[10px]"></i><span>Generate Edit</span>'; }
+                return;
+            }
+
+            closeImageEditUI();
+            setGeneratingState(true);
+            document.getElementById('statusDot').className = 'w-2 h-2 rounded-full bg-purple-500 transition-colors';
+            const messageId = appendBlurredLoadingMessage('Puter • Image Edit', editPrompt, null);
+
+            try {
+                if (typeof puter === 'undefined' || !puter.ai || !puter.ai.txt2img) {
+                    throw new Error('Puter.js did not load. Reload the page and try again.');
+                }
+                currentAbortController = new AbortController();
+                const ratioMap = { '1:1': { w: 1, h: 1 }, '16:9': { w: 16, h: 9 }, '9:16': { w: 9, h: 16 } };
+                const options = {
+                    model: currentImageModel || 'gpt-image-2',
+                    ratio: ratioMap[currentAspectRatio] || ratioMap['1:1'],
+                    input_image: sourceUrl
+                };
+                if (options.model === 'gemini-3-pro-image') { options.provider = 'gemini'; options.quality = '1K'; }
+                else if (options.model === 'grok-imagine-image') { options.provider = 'xai'; options.quality = '1k'; }
+                else { options.provider = 'openai-image-generation'; options.quality = 'high'; }
+
+                const image = await puter.ai.txt2img(editPrompt, options);
+                if (!image || !image.src) throw new Error('Puter returned no edited image.');
+                if (currentAbortController.signal.aborted) throw new Error('Generation aborted by user.');
+
+                const imageUrl = image.src;
+                const messageContent = `[IMAGE:${imageUrl}:${editPrompt}]`;
+                chat.messages.push({ role: 'assistant', content: messageContent, feedback: null });
+                saveChats();
+                finalizeBlurredMessage(messageId, imageUrl, editPrompt, chat.messages.length - 1);
+                triggerNotification();
+            } catch (error) {
+                document.getElementById(messageId)?.remove();
+                if (error.message !== 'Generation aborted by user.') {
+                    const errorMsg = 'Error editing image with Puter: ' + (error.message || 'Unknown error');
+                    chat.messages.push({ role: 'assistant', content: errorMsg, feedback: null });
+                    saveChats();
+                    appendMessageNode('assistant', errorMsg, false, chat.messages.length - 1, null, null);
+                }
+            } finally {
+                currentAbortController = null;
+                setGeneratingState(false);
+                document.getElementById('statusDot').className = 'w-2 h-2 rounded-full bg-neutral-600 transition-colors';
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles text-[10px]"></i><span>Generate Edit</span>'; }
+            }
+        }
+
+        // ---- AI RESPONSE ----
         async function executeAIResponse() {
             let chat = chats.find(c => c.id === currentChatId);
             if (!chat) {
@@ -1769,16 +1936,19 @@
                 if (userFeedback.liked.length > 0 || userFeedback.disliked.length > 0) {
                     currentSystemPrompt += ` [USER ADAPTIVE PREFERENCES (Private to this user):\n`;
                     if (userFeedback.liked.length > 0) {
-                        currentSystemPrompt += `- Style/traits the user THUMBED UP (DO MORE OF THIS): ${userFeedback.liked.slice(-5).join(' | ')}\n`;
+                        currentSystemPrompt +=
+                            `- Style/traits the user THUMBED UP (DO MORE OF THIS): ${userFeedback.liked.slice(-5).join(' | ')}\n`;
                     }
                     if (userFeedback.disliked.length > 0) {
-                        currentSystemPrompt += `- Style/traits the user THUMBED DOWN (AVOID COMPLETELY): ${userFeedback.disliked.slice(-5).join(' | ')}\n`;
+                        currentSystemPrompt +=
+                            `- Style/traits the user THUMBED DOWN (AVOID COMPLETELY): ${userFeedback.disliked.slice(-5).join(' | ')}\n`;
                     }
                     currentSystemPrompt += `]`;
                 }
 
                 if (webSearchMode) {
-                    currentSystemPrompt += " [WEB SEARCH ACTIVE: Thoroughly search the web for up-to-date references, data, and answers to ensure absolute accuracy.]";
+                    currentSystemPrompt +=
+                        " [WEB SEARCH ACTIVE: Thoroughly search the web for up-to-date references, data, and answers to ensure absolute accuracy.]";
                 }
 
                 const apiMessages = [
@@ -1833,7 +2003,7 @@
                 document.getElementById('statusDot').className = 'w-2 h-2 rounded-full bg-neutral-600 transition-colors';
                 chat.messages.push({ role: 'assistant', content: aiResponse, feedback: null });
                 saveChats();
-                
+
                 appendMessageNode('assistant', aiResponse, true, chat.messages.length - 1, null, null);
                 triggerNotification();
 
@@ -1852,14 +2022,15 @@
             }
         }
 
+        // ---- FORMAT MARKDOWN ----
         function formatMarkdownContent(content, imageUrl = null) {
             let html = '';
             if (imageUrl) {
                 html += `
-                    <div class="mb-2 rounded-xl overflow-hidden border border-neutral-800 bg-neutral-900 max-w-xs">
-                        <img src="${escapeHtml(imageUrl)}" alt="User Attachment" class="w-full h-auto object-cover max-h-48" />
-                    </div>
-                `;
+                        <div class="mb-2 rounded-xl overflow-hidden border border-neutral-800 bg-neutral-900 max-w-xs">
+                            <img src="${escapeHtml(imageUrl)}" alt="User Attachment" class="w-full h-auto object-cover max-h-48" />
+                        </div>
+                    `;
             }
             if (content === "Your request can not be generated") {
                 return html + `<span class="text-red-400 font-medium">Your request can not be generated</span>`;
@@ -1869,28 +2040,34 @@
                 const url = parts.slice(1, -1).join(':');
                 const prompt = parts[parts.length - 1];
                 return html + `
-                    <div class="space-y-3">
-                        <p class="text-xs text-neutral-400">Generated image for: <span class="italic text-white">"${escapeHtml(prompt)}"</span></p>
-                        <div class="rounded-xl overflow-hidden border border-neutral-800 bg-neutral-900">
-                            <img src="${url}" alt="${escapeHtml(prompt)}" class="w-full h-auto object-cover max-h-96" onerror="this.onerror=null;this.src='https://placehold.co/600x600/111/fff?text=Image+Load+Failed';" />
+                        <div class="space-y-3">
+                            <p class="text-xs text-neutral-400">Generated image for: <span class="italic text-white">"${escapeHtml(prompt)}"</span></p>
+                            <div class="rounded-xl overflow-hidden border border-neutral-800 bg-neutral-900">
+                                <img src="${url}" alt="${escapeHtml(prompt)}" class="w-full h-auto object-cover max-h-96" onerror="this.onerror=null;this.src='https://placehold.co/600x600/111/fff?text=Image+Load+Failed';" />
+                            </div>
+                            <div class="flex items-center space-x-2 pt-1">
+                                <button onclick="downloadGeneratedImage(this)" data-url="${escapeHtml(url)}" data-prompt="${escapeHtml(prompt)}" class="bg-white hover:bg-neutral-200 text-black font-medium px-3 py-1.5 rounded-lg text-xs flex items-center space-x-1.5 transition-colors cursor-pointer">
+                                    <i class="fa-solid fa-download text-[10px]"></i>
+                                    <span>Download PNG</span>
+                                </button>
+                            </div>
                         </div>
-                        <div class="flex items-center space-x-2 pt-1">
-                            <button onclick="downloadGeneratedImage(this)" data-url="${escapeHtml(url)}" data-prompt="${escapeHtml(prompt)}" class="bg-white hover:bg-neutral-200 text-black font-medium px-3 py-1.5 rounded-lg text-xs flex items-center space-x-1.5 transition-colors cursor-pointer">
-                                <i class="fa-solid fa-download text-[10px]"></i>
-                                <span>Download PNG</span>
-                            </button>
-                        </div>
-                    </div>
-                `;
+                    `;
             }
 
             let escaped = escapeHtml(content);
 
-            escaped = escaped.replace(/```([\s\S]*?)```/g, '<pre class="bg-neutral-900 border border-neutral-800 p-3 rounded-lg my-2 overflow-x-auto text-xs text-neutral-200 font-mono"><code>$1</code></pre>');
-            escaped = escaped.replace(/`([^`]+)`/g, '<code class="bg-neutral-900 px-1 py-0.5 rounded text-xs text-neutral-200 font-mono">$1</code>');
-            escaped = escaped.replace(/^# (.*?)$/gm, '<h1 class="text-lg font-bold text-white my-2.5 tracking-tight">$1</h1>');
-            escaped = escaped.replace(/^## (.*?)$/gm, '<h2 class="text-base font-bold text-white my-2 tracking-tight">$2</h2>');
-            escaped = escaped.replace(/^### (.*?)$/gm, '<h3 class="text-sm font-bold text-white my-1.5 tracking-tight">$1</h3>');
+            escaped = escaped.replace(/```([\s\S]*?)```/g,
+                '<pre class="bg-neutral-900 border border-neutral-800 p-3 rounded-lg my-2 overflow-x-auto text-xs text-neutral-200 font-mono"><code>$1</code></pre>'
+                );
+            escaped = escaped.replace(/`([^`]+)`/g,
+                '<code class="bg-neutral-900 px-1 py-0.5 rounded text-xs text-neutral-200 font-mono">$1</code>');
+            escaped = escaped.replace(/^# (.*?)$/gm,
+                '<h1 class="text-lg font-bold text-white my-2.5 tracking-tight">$1</h1>');
+            escaped = escaped.replace(/^## (.*?)$/gm,
+                '<h2 class="text-base font-bold text-white my-2 tracking-tight">$2</h2>');
+            escaped = escaped.replace(/^### (.*?)$/gm,
+                '<h3 class="text-sm font-bold text-white my-1.5 tracking-tight">$1</h3>');
             escaped = escaped.replace(/^\* (.*?)$/gm, '<li class="ml-4 list-disc text-neutral-200">$1</li>');
             escaped = escaped.replace(/^- (.*?)$/gm, '<li class="ml-4 list-disc text-neutral-200">$1</li>');
             escaped = escaped.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-white">$1</strong>');
@@ -1908,7 +2085,8 @@
                 const blobUrl = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = blobUrl;
-                a.download = (prompt ? prompt.substring(0, 30).replace(/[^a-z0-9]/gi, '_').toLowerCase() : 'generated_image') + '.png';
+                a.download = (prompt ? prompt.substring(0, 30).replace(/[^a-z0-9]/gi, '_').toLowerCase() :
+                    'generated_image') + '.png';
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
@@ -1935,7 +2113,9 @@
             return text.replace(/[&<>"']/g, function(m) { return map[m]; });
         }
 
-        function appendMessageNode(role, content, animate = false, messageIndex = null, initialFeedback = null, imageUrl = null) {
+        // ---- APPEND MESSAGE ----
+        function appendMessageNode(role, content, animate = false, messageIndex = null, initialFeedback = null,
+        imageUrl = null) {
             const messageList = document.getElementById('messageList');
             const isUser = role === 'user';
 
@@ -1952,7 +2132,8 @@
             containerDiv.className = `max-w-[85%] ${isUser ? 'flex flex-col items-end' : 'w-full'}`;
 
             const bubble = document.createElement('div');
-            bubble.className = `rounded-2xl px-4 py-3 text-sm leading-relaxed ${isUser ? 'bg-neutral-800 text-white rounded-br-xs' : 'bg-neutral-950 border border-neutral-800 text-neutral-200 rounded-bl-xs w-full'}`;
+            bubble.className =
+                `rounded-2xl px-4 py-3 text-sm leading-relaxed ${isUser ? 'bg-neutral-800 text-white rounded-br-xs' : 'bg-neutral-950 border border-neutral-800 text-neutral-200 rounded-bl-xs w-full'}`;
 
             containerDiv.appendChild(bubble);
             wrapper.appendChild(containerDiv);
@@ -1966,7 +2147,7 @@
                 let charIndex = 0;
                 const speed = 8;
                 const chunkSize = 20;
-                
+
                 function typeNextChunk() {
                     if (!isGenerating && currentAbortController === null) {
                         bubble.innerHTML = formatMarkdownContent(content, imageUrl);
@@ -1979,7 +2160,7 @@
                     const currentSubstring = content.substring(0, charIndex);
                     bubble.innerHTML = formatMarkdownContent(currentSubstring, imageUrl);
                     scrollToBottom();
-                    
+
                     if (charIndex < content.length) {
                         currentTypewriterTimeout = setTimeout(typeNextChunk, speed);
                     } else {
@@ -1996,17 +2177,20 @@
             if (containerDiv.querySelector('.msg-actions')) return;
 
             const actionsBar = document.createElement('div');
-            actionsBar.className = `msg-actions flex items-center space-x-2 mt-1.5 text-xs text-neutral-400 ${isUser ? 'justify-end' : 'justify-start'}`;
+            actionsBar.className =
+                `msg-actions flex items-center space-x-2 mt-1.5 text-xs text-neutral-400 ${isUser ? 'justify-end' : 'justify-start'}`;
 
             const copyBtn = document.createElement('button');
-            copyBtn.className = 'flex items-center space-x-1 hover:text-white transition-colors bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-800 px-2 py-1 rounded-md cursor-pointer';
+            copyBtn.className =
+                'flex items-center space-x-1 hover:text-white transition-colors bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-800 px-2 py-1 rounded-md cursor-pointer';
             copyBtn.innerHTML = '<i class="fa-solid fa-copy text-[10px]"></i><span>Copy</span>';
             copyBtn.onclick = () => copyText(content, copyBtn);
             actionsBar.appendChild(copyBtn);
 
             if (isUser && messageIndex !== null) {
                 const editBtn = document.createElement('button');
-                editBtn.className = 'flex items-center space-x-1 hover:text-white transition-colors bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-800 px-2 py-1 rounded-md cursor-pointer';
+                editBtn.className =
+                    'flex items-center space-x-1 hover:text-white transition-colors bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-800 px-2 py-1 rounded-md cursor-pointer';
                 editBtn.innerHTML = '<i class="fa-solid fa-pen text-[10px]"></i><span>Edit</span>';
                 editBtn.onclick = () => startEditMessage(messageIndex);
                 actionsBar.appendChild(editBtn);
@@ -2014,21 +2198,26 @@
 
             if (!isUser && messageIndex !== null) {
                 const retryBtn = document.createElement('button');
-                retryBtn.className = 'flex items-center space-x-1 hover:text-white transition-colors bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-800 px-2 py-1 rounded-md cursor-pointer';
+                retryBtn.className =
+                    'flex items-center space-x-1 hover:text-white transition-colors bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-800 px-2 py-1 rounded-md cursor-pointer';
                 retryBtn.innerHTML = '<i class="fa-solid fa-rotate-right text-[10px]"></i><span>Retry</span>';
                 retryBtn.onclick = () => retryMessage(messageIndex);
                 actionsBar.appendChild(retryBtn);
 
                 const thumbUpBtn = document.createElement('button');
                 const isLiked = initialFeedback === 'up';
-                thumbUpBtn.className = `flex items-center space-x-1 transition-colors bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-800 px-2 py-1 rounded-md cursor-pointer ${isLiked ? 'text-green-400 border-green-800/60' : 'hover:text-white'}`;
-                thumbUpBtn.innerHTML = `<i class="${isLiked ? 'fa-solid' : 'fa-regular'} fa-thumbs-up text-[10px]"></i><span>Helpful</span>`;
+                thumbUpBtn.className =
+                    `flex items-center space-x-1 transition-colors bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-800 px-2 py-1 rounded-md cursor-pointer ${isLiked ? 'text-green-400 border-green-800/60' : 'hover:text-white'}`;
+                thumbUpBtn.innerHTML =
+                    `<i class="${isLiked ? 'fa-solid' : 'fa-regular'} fa-thumbs-up text-[10px]"></i><span>Helpful</span>`;
                 thumbUpBtn.onclick = () => handleFeedback(messageIndex, 'up', thumbUpBtn, thumbDownBtn, content);
 
                 const thumbDownBtn = document.createElement('button');
                 const isDisliked = initialFeedback === 'down';
-                thumbDownBtn.className = `flex items-center space-x-1 transition-colors bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-800 px-2 py-1 rounded-md cursor-pointer ${isDisliked ? 'text-red-400 border-red-800/60' : 'hover:text-white'}`;
-                thumbDownBtn.innerHTML = `<i class="${isDisliked ? 'fa-solid' : 'fa-regular'} fa-thumbs-down text-[10px]"></i><span>Avoid</span>`;
+                thumbDownBtn.className =
+                    `flex items-center space-x-1 transition-colors bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-800 px-2 py-1 rounded-md cursor-pointer ${isDisliked ? 'text-red-400 border-red-800/60' : 'hover:text-white'}`;
+                thumbDownBtn.innerHTML =
+                    `<i class="${isDisliked ? 'fa-solid' : 'fa-regular'} fa-thumbs-down text-[10px]"></i><span>Avoid</span>`;
                 thumbDownBtn.onclick = () => handleFeedback(messageIndex, 'down', thumbUpBtn, thumbDownBtn, content);
 
                 actionsBar.appendChild(thumbUpBtn);
@@ -2067,11 +2256,15 @@
             localStorage.setItem('parasite_ai_feedback', JSON.stringify(userFeedback));
 
             const updatedFeedback = chat.messages[messageIndex].feedback;
-            upBtn.className = `flex items-center space-x-1 transition-colors bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-800 px-2 py-1 rounded-md cursor-pointer ${updatedFeedback === 'up' ? 'text-green-400 border-green-800/60' : 'hover:text-white'}`;
-            upBtn.querySelector('i').className = `${updatedFeedback === 'up' ? 'fa-solid' : 'fa-regular'} fa-thumbs-up text-[10px]`;
+            upBtn.className =
+                `flex items-center space-x-1 transition-colors bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-800 px-2 py-1 rounded-md cursor-pointer ${updatedFeedback === 'up' ? 'text-green-400 border-green-800/60' : 'hover:text-white'}`;
+            upBtn.querySelector('i').className =
+                `${updatedFeedback === 'up' ? 'fa-solid' : 'fa-regular'} fa-thumbs-up text-[10px]`;
 
-            downBtn.className = `flex items-center space-x-1 transition-colors bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-800 px-2 py-1 rounded-md cursor-pointer ${updatedFeedback === 'down' ? 'text-red-400 border-red-800/60' : 'hover:text-white'}`;
-            downBtn.querySelector('i').className = `${updatedFeedback === 'down' ? 'fa-solid' : 'fa-regular'} fa-thumbs-down text-[10px]`;
+            downBtn.className =
+                `flex items-center space-x-1 transition-colors bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-800 px-2 py-1 rounded-md cursor-pointer ${updatedFeedback === 'down' ? 'text-red-400 border-red-800/60' : 'hover:text-white'}`;
+            downBtn.querySelector('i').className =
+                `${updatedFeedback === 'down' ? 'fa-solid' : 'fa-regular'} fa-thumbs-down text-[10px]`;
         }
 
         function copyText(text, btn) {
@@ -2105,12 +2298,12 @@
                 if (bubble) {
                     bubble.className = 'rounded-2xl p-3 text-sm bg-neutral-900 border border-neutral-700 w-full';
                     bubble.innerHTML = `
-                        <textarea id="editInput_${messageIndex}" class="w-full bg-neutral-950 text-white text-sm p-2 rounded-lg border border-neutral-800 focus:outline-none focus:border-white resize-none" rows="2">${escapeHtml(originalContent)}</textarea>
-                        <div class="flex justify-end space-x-2 mt-2">
-                            <button onclick="renderActiveChat()" class="px-3 py-1 bg-neutral-800 hover:bg-neutral-700 rounded text-xs text-neutral-300 cursor-pointer">Cancel</button>
-                            <button onclick="saveEditMessage(${messageIndex})" class="px-3 py-1 bg-white hover:bg-neutral-200 text-black font-medium rounded text-xs cursor-pointer">Save & Submit</button>
-                        </div>
-                    `;
+                            <textarea id="editInput_${messageIndex}" class="w-full bg-neutral-950 text-white text-sm p-2 rounded-lg border border-neutral-800 focus:outline-none focus:border-white resize-none" rows="2">${escapeHtml(originalContent)}</textarea>
+                            <div class="flex justify-end space-x-2 mt-2">
+                                <button onclick="renderActiveChat()" class="px-3 py-1 bg-neutral-800 hover:bg-neutral-700 rounded text-xs text-neutral-300 cursor-pointer">Cancel</button>
+                                <button onclick="saveEditMessage(${messageIndex})" class="px-3 py-1 bg-white hover:bg-neutral-200 text-black font-medium rounded text-xs cursor-pointer">Save & Submit</button>
+                            </div>
+                        `;
                     const ta = document.getElementById(`editInput_${messageIndex}`);
                     if (ta) {
                         ta.focus();
@@ -2175,15 +2368,16 @@
             wrapper.appendChild(avatar);
 
             const bubble = document.createElement('div');
-            bubble.className = 'max-w-[85%] rounded-2xl px-4 py-3 text-sm bg-neutral-950 border border-neutral-800 text-neutral-300 rounded-bl-xs flex items-center space-x-3';
-            
+            bubble.className =
+                'max-w-[85%] rounded-2xl px-4 py-3 text-sm bg-neutral-950 border border-neutral-800 text-neutral-300 rounded-bl-xs flex items-center space-x-3';
+
             bubble.innerHTML = `
-                <div class="relative flex items-center justify-center w-5 h-5">
-                    <div class="absolute w-full h-full rounded-full bg-white/20 animate-ping"></div>
-                    <div class="w-2.5 h-2.5 rounded-full bg-white"></div>
-                </div>
-                <span class="text-xs font-medium text-neutral-200 tracking-wide animate-pulse">${customText}</span>
-            `;
+                    <div class="relative flex items-center justify-center w-5 h-5">
+                        <div class="absolute w-full h-full rounded-full bg-white/20 animate-ping"></div>
+                        <div class="w-2.5 h-2.5 rounded-full bg-white"></div>
+                    </div>
+                    <span class="text-xs font-medium text-neutral-200 tracking-wide animate-pulse">${customText}</span>
+                `;
 
             wrapper.appendChild(bubble);
             messageList.appendChild(wrapper);
