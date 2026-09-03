@@ -1,2403 +1,1023 @@
 <!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Parasite Studio's - Conversational Assistant</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parasite A.I & Global Chat</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            950: '#09090b',
+                            900: '#121214',
+                            800: '#18181b',
+                            700: '#27272a',
+                            600: '#3f3f46',
+                        }
+                    }
+                }
+            }
+        }
     </script>
-    <script src="https://js.puter.com/v2/"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-        code,
-        pre {
-            font-family: 'JetBrains Mono', monospace;
-        }
         ::-webkit-scrollbar {
             width: 6px;
             height: 6px;
         }
         ::-webkit-scrollbar-track {
-            background: #000000;
+            background: transparent;
         }
         ::-webkit-scrollbar-thumb {
-            background: #333333;
+            background: #27272a;
             border-radius: 3px;
         }
         ::-webkit-scrollbar-thumb:hover {
-            background: #555555;
+            background: #3f3f46;
         }
-        .player-bar {
-            position: fixed;
-            right: 18px;
-            bottom: 18px;
-            border-radius: 18px;
-            will-change: transform, width, height, left, top;
-            transition: width .42s cubic-bezier(.22, 1, .36, 1),
-                height .42s cubic-bezier(.22, 1, .36, 1),
-                padding .42s cubic-bezier(.22, 1, .36, 1),
-                border-radius .42s cubic-bezier(.22, 1, .36, 1),
-                transform .46s cubic-bezier(.22, 1, .36, 1),
-                opacity .28s ease;
+        .typing-dot {
+            animation: bounce 1.4s infinite ease-in-out both;
         }
-        .player-bar.player-bar-expanded {
-            left: 18px;
-            right: 18px;
-            bottom: 0;
-            border-radius: 16px 16px 0 0;
-            position: absolute;
-            min-height: 76px;
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1.0); }
         }
-        .player-bar.player-bar-mini {
-            width: min(360px, calc(100vw - 28px));
-            min-height: 64px;
-            height: 64px;
-            padding: 8px 12px 8px 8px;
-            right: 14px;
-            bottom: 80px;
-            border-radius: 16px;
+        @keyframes slowPulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.92); }
         }
-        .player-bar.player-bar-mini .player-controls {
-            width: auto;
-            max-width: none;
-            flex-direction: row;
-            margin-left: auto;
+        .ai-orb-pulse {
+            animation: slowPulse 2.5s infinite ease-in-out;
         }
-        .player-bar.player-bar-mini .player-timeline,
-        .player-bar.player-bar-mini .player-secondary-control,
-        .player-bar.player-bar-mini .player-volume {
-            display: none !important;
+        #sidebar {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .player-bar.player-bar-mini #playerDragHandle {
-            min-width: 0;
-            width: calc(100% - 56px);
-        }
-        .player-bar.player-bar-mini #playerAlbumArt {
-            width: 44px;
-            height: 44px;
-        }
-        .player-bar.dragging {
-            transition: none !important;
-            cursor: grabbing;
-        }
-        @media (max-width: 768px) {
-            .player-bar.player-bar-expanded {
-                left: 8px;
-                right: 8px;
-            }
-            .player-bar.player-bar-mini {
-                width: min(340px, calc(100vw - 20px));
-                right: 10px;
-                bottom: 76px;
-            }
-        }
-        @keyframes pulse-slow {
-            0%,
-            100% {
-                opacity: 1;
-            }
-            50% {
-                opacity: 0.4;
-            }
-        }
-        .animate-pulse-slow {
-            animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-
-        .image-edit-modal-backdrop {
-            backdrop-filter: blur(10px);
-        }
-        .edit-chip {
-            transition: all .18s ease;
-        }
-        .edit-chip:hover {
-            transform: translateY(-1px);
+        .reply-highlight {
+            border-left: 3px solid #f97316 !important;
+            background-color: rgba(249, 115, 22, 0.05) !important;
         }
     </style>
 </head>
-<body id="mainBody" class="bg-black text-white h-screen flex overflow-hidden selection:bg-white selection:text-black">
+<body class="bg-dark-950 text-zinc-100 h-screen flex overflow-hidden font-sans relative">
 
-    <!-- SIDEBAR -->
-    <aside id="sidebar" class="w-72 bg-neutral-950 border-r border-neutral-800 flex flex-col transition-all duration-300 z-20 md:relative absolute h-full -translate-x-full md:translate-x-0">
-        <div class="p-4 border-b border-neutral-800 flex items-center justify-between">
-            <div onclick="startNewChat()" class="flex items-center space-x-2.5 cursor-pointer group">
-                <span class="font-extrabold tracking-widest text-sm">PARASITE STUDIO'S</span>
+    <!-- BAN OVERLAY SCREEN -->
+    <div id="banScreen" class="fixed inset-0 bg-dark-950 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-dark-900 border border-dark-700 w-full max-w-lg rounded-2xl p-8 shadow-2xl space-y-6 text-center">
+            <div class="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto text-red-400 text-2xl">
+                <i class="fa-solid fa-ban"></i>
             </div>
-            <button onclick="toggleSidebar()" class="md:hidden text-neutral-400 hover:text-white p-1 cursor-pointer">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
+            <div class="space-y-2">
+                <h2 class="text-2xl font-bold tracking-tight text-white">Account Suspended</h2>
+                <p id="banMessage" class="text-sm text-zinc-400 leading-relaxed">
+                    You have violated our strict community guidelines regarding slurs, bullying, cussing, and abusive behavior too many times. Your access has been restricted.
+                </p>
+            </div>
+            
+            <div class="bg-dark-950 border border-dark-800 rounded-xl p-4 text-xs text-zinc-400 font-mono">
+                Ban Duration: 48 Hours remaining (or enter bypass password)
+            </div>
+
+            <!-- Password Unban Box -->
+            <div class="space-y-3 pt-2">
+                <div class="relative">
+                    <input type="password" id="unbanPasswordInput" placeholder="Enter security bypass password..." class="w-full bg-dark-950 border border-dark-700 rounded-xl px-4 py-3 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-zinc-500 text-center font-mono tracking-widest">
+                </div>
+                <button onclick="checkUnbanPassword()" class="w-full bg-zinc-100 hover:bg-white text-zinc-950 font-medium py-3 rounded-xl text-sm transition-colors shadow-lg">
+                    Submit Password
+                </button>
+            </div>
+            <p id="unbanError" class="text-xs text-red-400 hidden"></p>
+        </div>
+    </div>
+
+    <!-- Mobile Sidebar Backdrop -->
+    <div id="sidebarBackdrop" onclick="toggleSidebar()" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-20 md:hidden hidden"></div>
+
+    <!-- SIDEBAR SECTION -->
+    <aside id="sidebar" class="w-72 bg-dark-900 border-r border-dark-800 flex flex-col z-30 fixed md:relative inset-y-0 left-0 transform -translate-x-full md:translate-x-0 shadow-2xl md:shadow-none">
+        
+        <!-- Navigation Switcher: AI Chat vs Global Chat -->
+        <div class="p-3 border-b border-dark-800 space-y-2">
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="switchView('ai')" id="navAiBtn" class="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-semibold transition-colors bg-zinc-800 text-white border border-zinc-700">
+                    <i class="fa-solid fa-robot"></i> AI Chat
+                </button>
+                <button onclick="switchView('global')" id="navGlobalBtn" class="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-semibold transition-colors bg-dark-950 text-zinc-400 hover:text-zinc-200 border border-dark-800">
+                    <i class="fa-solid fa-globe"></i> Global Chat
+                </button>
+            </div>
+            
+            <div id="aiHeaderActions" class="flex items-center gap-2 pt-1">
+                <button onclick="createNewChat()" class="flex-1 flex items-center justify-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 py-2 px-3 rounded-xl text-xs font-medium transition-colors border border-zinc-700">
+                    <i class="fa-solid fa-plus text-xs"></i> New Chat
+                </button>
+                <button onclick="toggleSidebar()" class="md:hidden text-zinc-400 hover:text-white p-2">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
         </div>
 
-        <div class="p-3 space-y-2">
-            <div class="grid grid-cols-1 gap-2">
-                <button onclick="startNewChat()" class="w-full bg-white text-black hover:bg-neutral-200 transition-colors font-medium py-2.5 px-3 rounded-lg flex items-center justify-center space-x-1.5 text-xs shadow-sm cursor-pointer">
-                    <i class="fa-solid fa-plus text-[10px]"></i>
-                    <span>New Chat</span>
-                </button>
-                <button onclick="switchView('music')" id="musicNavBtn" class="w-full bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 transition-colors font-medium py-2 px-3 rounded-lg flex items-center justify-center space-x-1.5 text-xs cursor-pointer">
-                    <i class="fa-solid fa-music text-[10px]"></i>
-                    <span>Music Stream</span>
-                </button>
-                <button onclick="switchView('games')" id="gamesNavBtn" class="w-full bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 transition-colors font-medium py-2 px-3 rounded-lg flex items-center justify-center space-x-1.5 text-xs cursor-pointer">
-                    <i class="fa-solid fa-gamepad text-[10px]"></i>
-                    <span>Games</span>
-                </button>
-            </div>
-            <button onclick="openApiKeyModal()" class="w-full bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 transition-colors font-medium py-2 px-3 rounded-lg flex items-center justify-center space-x-2 text-xs cursor-pointer">
-                <span>API & Settings</span>
-            </button>
-        </div>
-
-        <div class="px-3 pb-2">
-            <div class="relative">
-                <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-neutral-500">
-                    <i class="fa-solid fa-search text-xs"></i>
-                </span>
-                <input type="text" id="chatSearchInput" oninput="filterChatHistory(this.value)" placeholder="Search chats..." class="w-full bg-neutral-900 border border-neutral-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-600 transition-colors" />
+        <!-- Warning Counter Badge in Sidebar -->
+        <div id="warningBadgeContainer" class="px-3 pt-3 hidden">
+            <div class="bg-amber-500/10 border border-amber-500/20 rounded-xl p-2.5 text-xs flex items-center justify-between text-amber-300">
+                <span class="flex items-center gap-1.5"><i class="fa-solid fa-triangle-exclamation"></i> Warnings:</span>
+                <span id="warningCountDisplay" class="font-bold font-mono">0 / 5</span>
             </div>
         </div>
 
-        <div class="px-3 py-1 text-[11px] font-semibold text-neutral-500 tracking-wider">CONVERSATIONS</div>
+        <!-- Chat History List (AI Mode) -->
+        <div id="chatHistoryList" class="flex-1 overflow-y-auto p-3 space-y-1">
+            <!-- Dynamically populated chats -->
+        </div>
 
-        <div id="chatHistoryList" class="flex-1 overflow-y-auto px-3 space-y-1">
+        <!-- Global Chat Info (Global Mode) -->
+        <div id="globalSidebarInfo" class="flex-1 overflow-y-auto p-3 space-y-3 hidden">
+            <div class="bg-dark-950 border border-dark-800 rounded-xl p-3 text-xs text-zinc-400 space-y-2">
+                <div class="font-semibold text-zinc-200 flex items-center gap-2">
+                    <i class="fa-solid fa-globe text-emerald-400"></i> Global Community Channel
+                </div>
+                <p class="text-[11px] leading-relaxed">Connect and chat with everyone in real-time. Messages sync instantly across all active users worldwide.</p>
+            </div>
+        </div>
+
+        <!-- Storage Bar Section -->
+        <div class="p-3 border-t border-dark-800 text-xs text-zinc-400 space-y-2">
+            <div class="flex justify-between items-center text-[11px]">
+                <span class="text-zinc-400">Storage Usage</span>
+                <span id="storageText" class="text-zinc-300 font-mono">0.02 GB / 2.00 GB</span>
+            </div>
+            <div class="w-full bg-dark-950 h-1.5 rounded-full overflow-hidden border border-dark-700">
+                <div id="storageBar" class="bg-zinc-300 h-full rounded-full transition-all duration-300" style="width: 1%;"></div>
+            </div>
+            <div class="text-[10px] text-zinc-600 text-center">Max limit: 100 chats</div>
         </div>
     </aside>
 
-    <!-- MAIN -->
-    <main class="flex-1 flex flex-col h-full bg-black relative">
-        <header class="h-14 border-b border-neutral-900 flex items-center justify-between px-4 bg-black/80 backdrop-blur z-10">
-            <div class="flex items-center space-x-3">
-                <button onclick="toggleSidebar()" class="text-neutral-400 hover:text-white p-2 md:hidden cursor-pointer">
+    <!-- MAIN CHAT AREA SECTION -->
+    <main class="flex-1 flex flex-col h-full bg-dark-950 relative overflow-hidden">
+        <!-- Top Navbar -->
+        <header class="h-14 border-b border-dark-800 flex items-center justify-between px-4 bg-dark-900/50 backdrop-blur z-10">
+            <div class="flex items-center gap-3">
+                <button onclick="toggleSidebar()" class="md:hidden text-zinc-400 hover:text-white p-2">
                     <i class="fa-solid fa-bars"></i>
                 </button>
-                <div class="flex items-center space-x-2.5">
-                    <span id="statusDot" class="w-2 h-2 rounded-full bg-neutral-600 transition-colors"></span>
-                    <span id="headerTitle" class="text-sm font-medium text-neutral-200">Conversational Assistant</span>
-                </div>
+                <h1 id="currentChatTitle" class="font-semibold text-sm tracking-wide text-zinc-200">Parasite A.I</h1>
             </div>
         </header>
 
-        <canvas id="musicCanvas" aria-hidden="true" class="fixed inset-0 pointer-events-none opacity-0"></canvas>
-
-        <!-- MUSIC SECTION -->
-        <div id="musicSection" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 hidden">
-            <div class="max-w-4xl mx-auto space-y-6">
-                <div class="flex flex-col md:flex-row items-center justify-between gap-4">
-                    <div class="flex items-center space-x-3 w-full md:w-auto">
-                        <button onclick="switchView('chat')" class="bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-200 hover:text-white px-3 py-2 rounded-xl text-xs flex items-center space-x-2 transition-colors cursor-pointer shrink-0">
-                            <i class="fa-solid fa-arrow-left text-xs"></i>
-                            <span>Back to Chat</span>
-                        </button>
-                        <div>
-                            <h1 class="text-xl font-bold tracking-tight text-white">Music Stream</h1>
-                            <p class="text-xs text-neutral-400">Search and stream music available across the catalog.</p>
-                        </div>
-                    </div>
-                    <div class="relative w-full md:w-72">
-                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-neutral-500">
-                            <i class="fa-solid fa-search text-xs"></i>
-                        </span>
-                        <input type="text" id="musicSearchInput" onkeydown="handleMusicSearchKeydown(event)" placeholder="Search tracks, artists..." class="w-full bg-neutral-900 border border-neutral-800 rounded-xl pl-8 pr-3 py-2 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-white transition-colors" />
-                    </div>
+        <!-- Messages Scroll Area -->
+        <div id="chatContainer" class="flex-1 overflow-y-auto px-4 py-6 space-y-6 flex flex-col items-center">
+            <!-- Welcome screen if no messages -->
+            <div id="welcomeScreen" class="my-auto text-center max-w-md mx-auto space-y-4 px-4">
+                <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-zinc-200 via-white to-zinc-400 ai-orb-pulse flex items-center justify-center mx-auto text-zinc-950 text-sm shadow-[0_0_15px_rgba(255,255,255,0.25)]">
+                    <div class="w-3 h-3 rounded-full bg-zinc-900/20 blur-[1px]"></div>
                 </div>
-
-                <div class="flex items-center space-x-2 overflow-x-auto pb-2 scrollbar-none" id="genreTagsContainer">
-                    <button onclick="filterByGenre('all', this)" class="genre-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-black shrink-0 transition-colors cursor-pointer">All Music</button>
-                    <button onclick="filterByGenre('rock', this)" class="genre-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 shrink-0 transition-colors cursor-pointer">Rock</button>
-                    <button onclick="filterByGenre('electronic', this)" class="genre-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 shrink-0 transition-colors cursor-pointer">Electronic</button>
-                    <button onclick="filterByGenre('jerseyclub', this)" class="genre-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 shrink-0 transition-colors cursor-pointer">Jersey Club</button>
-                    <button onclick="filterByGenre('pop', this)" class="genre-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 shrink-0 transition-colors cursor-pointer">Pop</button>
-                    <button onclick="filterByGenre('hiphop', this)" class="genre-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 shrink-0 transition-colors cursor-pointer">Hip Hop</button>
-                    <button onclick="filterByGenre('jazz', this)" class="genre-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 shrink-0 transition-colors cursor-pointer">Jazz</button>
-                    <button onclick="filterByGenre('classical', this)" class="genre-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 shrink-0 transition-colors cursor-pointer">Classical</button>
-                    <button onclick="filterByGenre('ambient', this)" class="genre-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 shrink-0 transition-colors cursor-pointer">Ambient</button>
-                    <button onclick="filterByGenre('metal', this)" class="genre-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 shrink-0 transition-colors cursor-pointer">Metal</button>
-                </div>
-
-                <div id="musicLoadingState" class="hidden text-center py-12 space-y-3">
-                    <div class="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>
-                    <p class="text-xs text-neutral-400">Loading music...</p>
-                </div>
-
-                <div id="musicTracksGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pb-24">
-                </div>
+                <h2 class="text-xl font-semibold tracking-tight text-white">What are we talking about today?</h2>
+                <p class="text-sm text-zinc-500 leading-relaxed">Ask anything or start a conversation.</p>
             </div>
         </div>
 
-        <!-- GAMES SECTION -->
-        <div id="gamesSection" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 hidden">
-            <div class="max-w-6xl mx-auto space-y-5">
-                <div class="flex items-center justify-between gap-3">
-                    <div class="flex items-center space-x-3">
-                        <button onclick="switchView('chat')" class="bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-200 hover:text-white px-3 py-2 rounded-xl text-xs flex items-center space-x-2 transition-colors cursor-pointer shrink-0">
-                            <i class="fa-solid fa-arrow-left text-xs"></i>
-                            <span>Back to Chat</span>
-                        </button>
-                        <div>
-                            <h1 class="text-xl font-bold tracking-tight text-white">Games</h1>
-                            <p class="text-xs text-neutral-400">Play browser games directly here.</p>
+        <!-- Input Box Area with Typing Indicator & Reply Banner -->
+        <div class="p-4 bg-dark-950 border-t border-dark-800/60 flex flex-col items-center">
+            <div class="w-full max-w-3xl">
+                <!-- Reply Banner -->
+                <div id="replyBanner" class="hidden mb-2 bg-dark-900 border border-orange-500/30 rounded-xl px-3 py-2 text-xs flex items-center justify-between text-zinc-300">
+                    <div class="flex items-center gap-2 truncate">
+                        <i class="fa-solid fa-reply text-orange-400"></i>
+                        <span class="text-zinc-400">Replying to <strong id="replyingToUser" class="text-orange-300 font-mono"></strong>:</span>
+                        <span id="replyingToText" class="truncate text-zinc-400 italic"></span>
+                    </div>
+                    <button onclick="cancelReply()" class="text-zinc-500 hover:text-zinc-200 p-1">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <!-- Typing Indicator Container -->
+                <div id="typingIndicator" class="hidden pb-3 flex flex-col gap-1">
+                    <div class="flex items-center gap-3 text-zinc-400 text-sm">
+                        <div class="w-4 h-4 rounded-full bg-gradient-to-tr from-zinc-200 via-white to-zinc-400 ai-orb-pulse flex items-center justify-center text-zinc-950 text-[10px] shrink-0 shadow-[0_0_10px_rgba(255,255,255,0.2)]"></div>
+                        <div class="bg-dark-900 border border-dark-800 px-4 py-3 rounded-2xl rounded-tl-sm flex items-center gap-1.5 shadow-sm">
+                            <div class="w-2 h-2 rounded-full bg-zinc-400 typing-dot"></div>
+                            <div class="w-2 h-2 rounded-full bg-zinc-400 typing-dot"></div>
+                            <div class="w-2 h-2 rounded-full bg-zinc-400 typing-dot"></div>
                         </div>
                     </div>
-                </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <button onclick="openGame('fnaf')" class="text-left bg-neutral-950 border border-neutral-900 hover:border-neutral-700 rounded-2xl p-3 transition-colors group cursor-pointer">
-                        <div class="relative aspect-video rounded-xl overflow-hidden bg-neutral-900 border border-neutral-800">
-                            <img src="https://fnafgames.io/upload/imgs/fnaf-games.jpg" alt="FNAF Games" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onerror="this.onerror=null;this.src='https://placehold.co/640x360/111/fff?text=FNAF';" />
-                            <div class="absolute inset-0 bg-black/45 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                <span class="w-12 h-12 rounded-full bg-white text-black flex items-center justify-center shadow-lg">
-                                    <i class="fa-solid fa-play"></i>
-                                </span>
-                            </div>
-                        </div>
-                        <div class="pt-3 flex items-center justify-between gap-3">
-                            <div>
-                                <h3 class="text-sm font-bold text-white">FNAF</h3>
-                                <p class="text-[11px] text-neutral-400 mt-0.5">Five Nights At Freddy's</p>
-                            </div>
-                            <i class="fa-solid fa-arrow-up-right-from-square text-[10px] text-neutral-500"></i>
-                        </div>
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- GAME PLAYER OVERLAY -->
-        <div id="gamePlayerSection" class="fixed inset-0 bg-black z-30 hidden">
-            <div class="h-14 border-b border-neutral-900 bg-black flex items-center justify-between px-4">
-                <div class="flex items-center space-x-3 min-w-0">
-                    <button onclick="closeGame()" class="bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-200 hover:text-white px-3 py-2 rounded-xl text-xs flex items-center space-x-2 transition-colors cursor-pointer shrink-0">
-                        <i class="fa-solid fa-arrow-left text-xs"></i>
-                        <span>Back to Games</span>
-                    </button>
-                    <span class="text-sm font-medium text-white truncate">FNAF</span>
-                </div>
-                <a href="https://fnafgames.io/" target="_blank" rel="noopener noreferrer" class="text-xs text-neutral-400 hover:text-white transition-colors flex items-center space-x-1.5">
-                    <span>Open Site</span>
-                    <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
-                </a>
-            </div>
-            <iframe id="gameFrame" src="about:blank" title="FNAF" class="w-full h-[calc(100%-3.5rem)] border-0 bg-black" allow="autoplay; fullscreen; gamepad" allowfullscreen></iframe>
-        </div>
-
-        <!-- CHAT CONTAINER -->
-        <div id="chatContainer" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
-            <div id="introScreen" class="h-full flex flex-col items-center justify-center max-w-xl mx-auto text-center space-y-6">
-                <div class="space-y-2">
-                    <h1 class="text-2xl font-bold tracking-tight">Parasite Studio's</h1>
-                    <p class="text-sm text-neutral-400 leading-relaxed">
-                        Your advanced conversational companion with Web Search & Superior AI Image Generation.
-                    </p>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 w-full text-left text-xs">
-                    <div class="bg-neutral-950 border border-neutral-900 p-3 rounded-xl">
-                        <div class="font-semibold text-white mb-1">Deep Knowledge</div>
-                        <p class="text-neutral-400">Ask questions, explore concepts, and brainstorm ideas effortlessly.</p>
-                    </div>
-                    <div class="bg-neutral-950 border border-neutral-900 p-3 rounded-xl">
-                        <div class="font-semibold text-white mb-1">Pro Image Studio</div>
-                        <p class="text-neutral-400">Generate crisp, photorealistic artwork with smart prompt expansion and zero distortion.</p>
+                    <!-- Busy Server Notice -->
+                    <div id="busyServerNotice" class="hidden pl-7 text-[11px] text-amber-400/80 italic font-mono">
+                        ⚠️ Servers are currently busy, generating response...
                     </div>
                 </div>
-                <div class="flex flex-wrap justify-center gap-2 pt-2">
-                    <button onclick="sendPreset('Explain quantum mechanics in simple terms with an example')" class="text-xs bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 px-3 py-2 rounded-lg text-neutral-300 transition-colors cursor-pointer">
-                        Quantum Mechanics Breakdown
+
+                <form id="chatForm" onsubmit="handleFormSubmit(event)" class="relative flex items-end bg-dark-900 border border-dark-700 rounded-2xl focus-within:border-zinc-500 transition-colors shadow-lg">
+                    <textarea 
+                        id="userInput" 
+                        rows="1" 
+                        placeholder="Message Parasite A.I..." 
+                        class="w-full bg-transparent text-zinc-100 placeholder-zinc-500 text-sm px-4 py-3.5 focus:outline-none resize-none max-h-36 overflow-y-auto"
+                        onkeydown="handleKeydown(event)"
+                        oninput="autoResize(this)"
+                    ></textarea>
+                    <button 
+                        type="submit" 
+                        id="actionButton"
+                        class="m-2 bg-zinc-100 hover:bg-white text-zinc-950 p-2.5 rounded-xl transition-all flex items-center justify-center w-9 h-9 shadow-sm"
+                        title="Send Message"
+                    >
+                        <i id="actionButtonIcon" class="fa-solid fa-arrow-up text-xs"></i>
                     </button>
-                    <button onclick="sendPreset('Tell me an interesting historical event and why it matters')" class="text-xs bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 px-3 py-2 rounded-lg text-neutral-300 transition-colors cursor-pointer">
-                        Historical Deep Dive
-                    </button>
-                    <button onclick="sendPreset('A majestic cybernetic owl perched on a neon-lit Tokyo rooftop at twilight')" class="text-xs bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 px-3 py-2 rounded-lg text-neutral-300 transition-colors cursor-pointer">
-                        ✨ Generate Cybernetic Owl
-                    </button>
+                </form>
+                <div id="footerDisclaimer" class="text-center mt-2 text-[11px] text-zinc-600">
+                    Parasite A.I can make mistakes. Verify critical info.
                 </div>
             </div>
-
-            <div id="messageList" class="max-w-3xl mx-auto w-full space-y-6 hidden">
-            </div>
-        </div>
-
-        <!-- INPUT AREA -->
-        <div class="p-4 bg-black border-t border-neutral-900">
-            <div class="max-w-3xl mx-auto relative">
-                <div class="flex items-center justify-between mb-2 px-1 flex-wrap gap-2">
-                    <div class="flex items-center space-x-2 flex-wrap gap-y-2">
-                        <button id="webSearchToggle" onclick="toggleWebSearch()" class="text-xs px-2.5 py-1 rounded-md border border-neutral-800 bg-neutral-900 text-neutral-400 hover:text-white transition-colors flex items-center space-x-1.5 cursor-pointer">
-                            <span id="webSearchIndicator" class="w-1.5 h-1.5 rounded-full bg-neutral-600"></span>
-                            <span>Web Search</span>
-                        </button>
-                        <button id="imageGenToggle" onclick="toggleImageGen()" class="text-xs px-2.5 py-1 rounded-md border border-neutral-800 bg-neutral-900 text-neutral-400 hover:text-white transition-colors flex items-center space-x-1.5 cursor-pointer">
-                            <span id="imageGenIndicator" class="w-1.5 h-1.5 rounded-full bg-neutral-600"></span>
-                            <span id="imageGenLabel">Image Generator</span>
-                        </button>
-                        <div id="imageModelContainer" class="hidden flex items-center space-x-2">
-                            <select id="imageModelSelector" onchange="changeImageModel(this.value)" class="bg-neutral-900 border border-neutral-800 rounded-md px-2.5 py-1 text-xs text-neutral-300 focus:outline-none focus:border-neutral-600 cursor-pointer">
-                                <option value="gpt-image-2">Puter: GPT Image 2</option>
-                                <option value="gemini-3-pro-image">Puter: Gemini 3 Pro Image</option>
-                                <option value="grok-imagine-image">Puter: Grok Imagine Image</option>
-                            </select>
-                            <select id="imageAspectRatioSelector" onchange="changeAspectRatio(this.value)" class="bg-neutral-900 border border-neutral-800 rounded-md px-2.5 py-1 text-xs text-neutral-300 focus:outline-none focus:border-neutral-600 cursor-pointer">
-                                <option value="1:1">Square (1:1)</option>
-                                <option value="16:9">Landscape (16:9)</option>
-                                <option value="9:16">Portrait (9:16)</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-                <div id="attachmentPreviewContainer" class="hidden mb-2"></div>
-                <div class="flex items-end bg-neutral-950 border border-neutral-800 rounded-xl focus-within:border-white transition-colors shadow-lg relative">
-                    <div class="p-3 pb-3 flex items-center shrink-0">
-                        <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="handleFileSelected(event)" />
-                        <button id="attachFileBtn" onclick="document.getElementById('fileInput').click()" title="Attach Image" class="text-neutral-400 hover:text-white p-1 flex items-center justify-center cursor-pointer transition-colors">
-                            <i class="fa-solid fa-paperclip text-sm"></i>
-                        </button>
-                    </div>
-                    <textarea id="userInput" rows="1" placeholder="Type your message here or describe an image..." class="w-full bg-transparent text-white placeholder-neutral-500 text-sm py-3.5 pr-3 focus:outline-none resize-none max-h-32" onkeydown="handleKeydown(event)" oninput="autoResize(this)"></textarea>
-                    <button id="sendButton" onclick="sendMessage()" title="Send message" class="m-1.5 bg-white text-black hover:bg-neutral-200 transition-colors w-9 h-9 rounded-lg flex items-center justify-center shrink-0 disabled:opacity-30 cursor-pointer">
-                        <i class="fa-solid fa-arrow-up text-sm"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- PERSISTENT PLAYER BAR -->
-        <div id="persistentPlayerBar" class="hidden player-bar player-bar-expanded bg-neutral-950 border border-neutral-800 px-4 py-3 z-40 items-center justify-between gap-4 shadow-2xl">
-            <div id="playerDragHandle" class="flex items-center space-x-3 w-1/4 min-w-[180px] cursor-grab active:cursor-grabbing select-none touch-none">
-                <img id="playerAlbumArt" src="https://placehold.co/100x100/111/fff?text=No+Track" alt="Album Art" class="w-11 h-11 rounded-lg object-cover border border-neutral-800 shrink-0" />
-                <div class="truncate">
-                    <h4 id="playerTrackTitle" class="text-xs font-bold text-white truncate">Select a track</h4>
-                    <p id="playerArtistName" class="text-[11px] text-neutral-400 truncate">Music</p>
-                </div>
-            </div>
-
-            <div class="player-controls flex flex-col items-center space-y-1 w-2/4 max-w-md">
-                <div class="flex items-center space-x-4">
-                    <button onclick="playPrevTrack()" title="Previous Track" class="text-neutral-400 hover:text-white cursor-pointer player-secondary-control"><i class="fa-solid fa-backward-step text-sm"></i></button>
-                    <button id="playerPlayPauseBtn" onclick="togglePlayPause()" title="Play / Pause" class="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center hover:bg-neutral-200 transition-colors cursor-pointer"><i class="fa-solid fa-play text-xs"></i></button>
-                    <button onclick="playNextTrack()" title="Next Track" class="text-neutral-400 hover:text-white cursor-pointer player-secondary-control"><i class="fa-solid fa-forward-step text-sm"></i></button>
-                </div>
-                <div class="flex items-center space-x-2 w-full text-[10px] text-neutral-400 font-mono player-timeline">
-                    <span id="currentTimeLabel">0:00</span>
-                    <input type="range" id="trackSeekBar" value="0" min="0" max="100" oninput="seekTrack(this.value)" class="w-full accent-white h-1 bg-neutral-800 rounded-lg cursor-pointer" />
-                    <span id="durationLabel">0:00</span>
-                </div>
-            </div>
-
-            <div class="player-volume hidden md:flex items-center space-x-2 w-1/4 justify-end text-neutral-400">
-                <i class="fa-solid fa-volume-high text-xs"></i>
-                <input type="range" id="volumeSlider" min="0" max="1" step="0.05" value="1" oninput="adjustVolume(this.value)" class="w-20 accent-white h-1 bg-neutral-800 rounded-lg cursor-pointer" />
-            </div>
-
-            <button id="playerCloseBtn" onclick="closePlayerBar(event)" title="Hide player" class="absolute top-2 right-2 text-neutral-500 hover:text-white w-6 h-6 rounded-md hover:bg-neutral-800 flex items-center justify-center cursor-pointer">
-                <i class="fa-solid fa-xmark text-xs"></i>
-            </button>
         </div>
     </main>
 
-    <!-- ANTI-ADBLOCK MODAL -->
-    <div id="antiAdBlockModal" class="fixed inset-0 bg-black/95 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-neutral-950 border border-neutral-800 rounded-2xl max-w-md w-full p-6 text-center space-y-4 shadow-2xl">
-            <div class="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 flex items-center justify-center mx-auto text-xl">
-                <i class="fa-solid fa-triangle-exclamation"></i>
+    <!-- CUSTOM MODAL OVERLAY -->
+    <div id="customModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-dark-900 border border-dark-700 w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4">
+            <h3 id="modalTitle" class="text-lg font-semibold text-white"></h3>
+            <p id="modalMessage" class="text-sm text-zinc-400 hidden"></p>
+            <div id="modalInputContainer" class="hidden">
+                <input type="text" id="modalInput" class="w-full bg-dark-950 border border-dark-700 rounded-xl px-4 py-2.5 text-sm text-zinc-100 focus:outline-none focus:border-zinc-500">
             </div>
-            <h3 class="text-lg font-bold text-white">Ad Blocker Detected</h3>
-            <p class="text-xs text-neutral-400 leading-relaxed">
-                Disable your ad blocker to use this website.
-            </p>
-            <div id="adblockErrorMsg" class="text-red-400 text-xs hidden font-medium bg-red-500/10 border border-red-500/20 p-2 rounded-lg">
-                Ad blocker is still active! Please disable it to continue.
-            </div>
-            <button onclick="dismissAntiAdBlock()" class="w-full py-2.5 rounded-xl bg-white hover:bg-neutral-200 text-xs font-medium text-black transition-colors cursor-pointer">
-                I Have Disabled My Ad Blocker
-            </button>
-        </div>
-    </div>
-
-    <!-- API KEY MODAL -->
-    <div id="apiKeyModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-neutral-950 border border-neutral-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div class="flex items-center justify-between">
-                <h3 class="text-base font-bold text-white flex items-center space-x-2">
-                    <span>API Key & Settings</span>
-                </h3>
-                <button onclick="closeApiKeyModal()" class="text-neutral-400 hover:text-white p-1 cursor-pointer">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-xs font-medium text-neutral-300 mb-1.5">OpenRouter API Key</label>
-                    <input type="password" id="apiKeyInput" placeholder="sk-or-v1-..." class="w-full bg-neutral-900 border border-neutral-800 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-white transition-colors font-mono" />
-                    <p class="text-[11px] text-neutral-500 mt-1">Saved securely in your browser session.</p>
-                    <p class="text-[11px] text-green-400 mt-1.5 flex items-center space-x-1 font-medium"><i class="fa-solid fa-shield-halved text-[10px]"></i><span>Don't worry, we keep your API keys safe.</span></p>
-                </div>
-
-                <div class="border-t border-neutral-900 pt-4">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <label class="block text-xs font-medium text-neutral-300">Browser Notifications</label>
-                            <p class="text-[11px] text-neutral-400">Get notified when AI finishes generating a response.</p>
-                        </div>
-                        <button id="notificationToggleBtn" onclick="toggleNotifications()" class="w-10 h-6 bg-neutral-800 rounded-full transition-colors relative p-1 cursor-pointer">
-                            <div id="notificationToggleThumb" class="w-4 h-4 bg-neutral-400 rounded-full transition-transform translate-x-0"></div>
-                        </button>
-                    </div>
-
-                </div>
-            </div>
-            <div class="flex justify-end space-x-2 pt-2 border-t border-neutral-900">
-                <button onclick="closeApiKeyModal()" class="px-4 py-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-xs font-medium text-neutral-300 transition-colors cursor-pointer">Cancel</button>
-                <button onclick="saveApiKey()" class="px-4 py-2 rounded-xl bg-white hover:bg-neutral-200 text-xs font-medium text-black transition-colors cursor-pointer">Save Settings</button>
+            <div class="flex justify-end gap-3 pt-2">
+                <button id="modalCancelBtn" class="px-4 py-2 rounded-xl text-sm font-medium text-zinc-400 hover:text-white bg-dark-800 hover:bg-zinc-700 transition-colors">Cancel</button>
+                <button id="modalConfirmBtn" class="px-4 py-2 rounded-xl text-sm font-medium bg-zinc-100 hover:bg-white text-zinc-950 transition-colors">Confirm</button>
             </div>
         </div>
     </div>
 
-    <!-- IMAGE EDIT MODAL -->
-    <div id="imageEditModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-[70] hidden items-center justify-center p-4">
-        <div class="bg-black border border-neutral-700 rounded-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto shadow-2xl">
-            <div class="flex items-center justify-between px-5 py-4 border-b border-neutral-800">
-                <div>
-                    <h3 class="text-base font-bold text-white">Edit Image</h3>
-                    <p class="text-[11px] text-neutral-400 mt-1">Make changes to this exact image.</p>
-                </div>
-                <button type="button" id="closeImageEditBtn" class="text-neutral-400 hover:text-white p-2 rounded-lg hover:bg-neutral-900 cursor-pointer">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
-            <div class="p-5">
-                <div class="grid md:grid-cols-[280px_1fr] gap-5">
-                    <div class="rounded-xl overflow-hidden border border-neutral-800 bg-neutral-950 aspect-square">
-                        <img id="editImagePreview" src="" alt="Image to edit" class="w-full h-full object-cover" />
-                    </div>
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-xs font-medium text-white mb-2">Describe the changes</label>
-                            <textarea id="imageEditPrompt" rows="8" placeholder="Example: Change the sky to a sunset, keep the character, pose, face, and composition exactly the same." class="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3.5 py-3 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-white resize-none"></textarea>
-                        </div>
-                        <div>
-                            <div class="text-[11px] font-medium text-neutral-400 mb-2">Quick edits</div>
-                            <div class="grid grid-cols-2 gap-2">
-                                <button type="button" class="edit-chip px-3 py-2 rounded-lg bg-neutral-950 hover:bg-neutral-900 border border-neutral-800 text-[11px] text-neutral-300 cursor-pointer" data-edit="Change the background while keeping the main subject unchanged.">Background</button>
-                                <button type="button" class="edit-chip px-3 py-2 rounded-lg bg-neutral-950 hover:bg-neutral-900 border border-neutral-800 text-[11px] text-neutral-300 cursor-pointer" data-edit="Change the lighting to cinematic lighting while preserving the subject and composition.">Lighting</button>
-                                <button type="button" class="edit-chip px-3 py-2 rounded-lg bg-neutral-950 hover:bg-neutral-900 border border-neutral-800 text-[11px] text-neutral-300 cursor-pointer" data-edit="Change the image into a detailed anime illustration while preserving the same subject and pose.">Anime style</button>
-                                <button type="button" class="edit-chip px-3 py-2 rounded-lg bg-neutral-950 hover:bg-neutral-900 border border-neutral-800 text-[11px] text-neutral-300 cursor-pointer" data-edit="Make the colors more vibrant while keeping the subject and composition unchanged.">Vibrant colors</button>
-                            </div>
-                        </div>
-                        <div class="flex items-center justify-between rounded-xl bg-neutral-950 border border-neutral-800 p-3">
-                            <div>
-                                <div class="text-xs font-medium text-white">Preserve everything else</div>
-                                <div class="text-[10px] text-neutral-500">Only apply the changes you describe.</div>
-                            </div>
-                            <button type="button" id="imageEditPreserveToggle" aria-pressed="true" class="relative w-11 h-6 rounded-full bg-white transition-colors cursor-pointer">
-                                <span class="absolute left-1 top-1 w-4 h-4 rounded-full bg-black transition-transform translate-x-5"></span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="flex items-center justify-end gap-2 px-5 py-4 border-t border-neutral-800">
-                <button type="button" id="cancelImageEditBtn" class="px-4 py-2 rounded-xl bg-neutral-950 hover:bg-neutral-900 border border-neutral-800 text-xs font-medium text-neutral-300 cursor-pointer">Cancel</button>
-                <button type="button" id="applyImageEditBtn" class="px-4 py-2 rounded-xl bg-white hover:bg-neutral-200 text-black text-xs font-medium flex items-center gap-2 cursor-pointer">
-                    <i class="fa-solid fa-wand-magic-sparkles text-[10px]"></i><span>Generate Edit</span>
-                </button>
-            </div>
-        </div>
-    </div>
+    <!-- FIREBASE AND APP LOGIC SCRIPT -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    <!-- JAVASCRIPT -->
-    <script>
-        let chats = JSON.parse(localStorage.getItem('parasite_ai_chats') || '[]');
-        let globalMemory = JSON.parse(localStorage.getItem('parasite_ai_global_memory') || '[]');
-        let userFeedback = JSON.parse(localStorage.getItem('parasite_ai_feedback') || '{"liked": [], "disliked": []}');
-        let currentImageModel = localStorage.getItem('parasite_ai_image_model') || 'gpt-image-2';
-        let currentAspectRatio = localStorage.getItem('parasite_ai_aspect_ratio') || '1:1';
-        let notificationsEnabled = localStorage.getItem('parasite_ai_notifications') === 'true';
-        let currentChatId = null;
-        let webSearchMode = false;
-        let imageGenMode = false;
-        let attachedImage = null;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+            apiKey: "AIzaSyDummyKey",
+            authDomain: "dummy.firebaseapp.com",
+            projectId: "dummy",
+            storageBucket: "dummy.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123:web:123"
+        };
 
-        let currentAbortController = null;
-        let isGenerating = false;
-        let currentTypewriterTimeout = null;
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
 
-        let musicTracks = [];
-        let currentTrackIndex = 0;
-        let audioPlayer = new Audio();
-        let isMusicPlaying = false;
-        let activeGenre = 'all';
-        let musicOffset = 0;
-        let musicHasMore = true;
-        let musicRequestId = 0;
-        let playerClosed = false;
-        let playerIsMini = false;
-        let playerDragState = null;
-        const AUDIUS_API_KEY = '0x35830d0b224f2d082d956db9dd4df05e5821d2d5';
-        const AUDIUS_API_BASE = 'https://api.audius.co/v1';
-        let nextTrackPreloader = null;
+        let currentUser = null;
+        let globalMessages = [];
 
-        const baseSystemPrompt =
-            "You are Parasite Studio's an advanced, highly capable, and witty conversational AI assistant. You provide concise, engaging, and accurate responses. You can write code, analyze topics, and help with creative tasks.";
+        // Expose variables & methods globally so UI functions can interact with Firebase
+        window.firebaseDb = db;
+        window.appId = appId;
+        window.globalMessages = globalMessages;
 
-        // ---- VIEW SWITCHING ----
-        function switchView(viewName) {
-            const chatCont = document.getElementById('chatContainer');
-            const musicCont = document.getElementById('musicSection');
-            const gamesCont = document.getElementById('gamesSection');
-            const musicNavBtn = document.getElementById('musicNavBtn');
-            const gamesNavBtn = document.getElementById('gamesNavBtn');
-            const chatInputArea = document.querySelector('.p-4.bg-black.border-t');
-            const playerBar = document.getElementById('persistentPlayerBar');
-
-            if (viewName === 'music') {
-                chatCont.classList.add('hidden');
-                gamesCont.classList.add('hidden');
-                musicCont.classList.remove('hidden');
-                chatInputArea.classList.add('hidden');
-
-                document.getElementById('headerTitle').innerText = 'Music Stream';
-                musicNavBtn.className =
-                    'w-full bg-white text-black font-medium py-2 px-3 rounded-lg flex items-center justify-center space-x-1.5 text-xs shadow-sm cursor-pointer';
-                gamesNavBtn.className =
-                    'w-full bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 transition-colors font-medium py-2 px-3 rounded-lg flex items-center justify-center space-x-1.5 text-xs cursor-pointer';
-
-                if (playerBar && audioPlayer.src && !playerClosed) {
-                    setPlayerMode(false);
-                    playerBar.classList.remove('hidden');
-                }
-
-                if (musicTracks.length === 0) {
-                    fetchAudiusMusic('', 'all', true);
-                }
-            } else if (viewName === 'games') {
-                chatCont.classList.add('hidden');
-                musicCont.classList.add('hidden');
-                gamesCont.classList.remove('hidden');
-                chatInputArea.classList.add('hidden');
-
-                document.getElementById('headerTitle').innerText = 'Games';
-                musicNavBtn.className =
-                    'w-full bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 transition-colors font-medium py-2 px-3 rounded-lg flex items-center justify-center space-x-1.5 text-xs cursor-pointer';
-                gamesNavBtn.className =
-                    'w-full bg-white text-black font-medium py-2 px-3 rounded-lg flex items-center justify-center space-x-1.5 text-xs shadow-sm cursor-pointer';
-            } else {
-                musicCont.classList.add('hidden');
-                gamesCont.classList.add('hidden');
-                chatCont.classList.remove('hidden');
-                chatInputArea.classList.remove('hidden');
-
-                document.getElementById('headerTitle').innerText =
-                    currentChatId ? (chats.find(c => c.id === currentChatId)?.title || 'Conversation') :
-                    'Conversational Assistant';
-
-                musicNavBtn.className =
-                    'w-full bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 transition-colors font-medium py-2 px-3 rounded-lg flex items-center justify-center space-x-1.5 text-xs cursor-pointer';
-                gamesNavBtn.className =
-                    'w-full bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 transition-colors font-medium py-2 px-3 rounded-lg flex items-center justify-center space-x-1.5 text-xs cursor-pointer';
-
-                if (playerBar && audioPlayer.src && !playerClosed) {
-                    setPlayerMode(true);
-                    playerBar.classList.remove('hidden');
-                }
-            }
-        }
-
-        // ---- GAMES ----
-        function openGame(gameName) {
-            const gamePlayer = document.getElementById('gamePlayerSection');
-            const gameFrame = document.getElementById('gameFrame');
-            if (!gamePlayer || !gameFrame) return;
-
-            if (gameName === 'fnaf') {
-                gameFrame.src = 'https://fnafgames.io/';
-                gamePlayer.classList.remove('hidden');
-            }
-        }
-
-        function closeGame() {
-            const gamePlayer = document.getElementById('gamePlayerSection');
-            const gameFrame = document.getElementById('gameFrame');
-            if (gamePlayer) gamePlayer.classList.add('hidden');
-            if (gameFrame) gameFrame.src = 'about:blank';
-            switchView('games');
-        }
-
-        // ---- AUDIUS HELPERS ----
-        function buildAudiusUrl(path, params = {}) {
-            const query = new URLSearchParams({
-                ...params,
-                app_name: "Parasite Studio's",
-                api_key: AUDIUS_API_KEY
-            });
-            return `${AUDIUS_API_BASE}${path}?${query.toString()}`;
-        }
-
-        async function fetchAudiusMusic(searchQuery = '', tag = 'all', reset = true) {
-            const loadingEl = document.getElementById('musicLoadingState');
-            const gridEl = document.getElementById('musicTracksGrid');
-            const requestId = ++musicRequestId;
-
-            if (reset) {
-                musicOffset = 0;
-                musicHasMore = true;
-                musicTracks = [];
-                gridEl.innerHTML = '';
-            }
-
-            loadingEl.classList.remove('hidden');
-
+        async function initAuth() {
             try {
-                let data;
-
-                if (!searchQuery && tag === 'all') {
-                    const url = buildAudiusUrl('/tracks/trending', {
-                        limit: 100,
-                        offset: musicOffset
-                    });
-                    const response = await fetch(url, { cache: 'no-store' });
-                    if (!response.ok) throw new Error(`Audius returned ${response.status}`);
-                    data = await response.json();
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
                 } else {
-                    const query = searchQuery || (tag === 'jerseyclub' ? 'jersey club' : tag);
-                    const params = {
-                        query,
-                        limit: 100,
-                        offset: musicOffset
-                    };
-
-                    const response = await fetch(buildAudiusUrl('/tracks/search', params), {
-                        cache: 'no-store'
-                    });
-                    if (!response.ok) throw new Error(`Audius returned ${response.status}`);
-                    data = await response.json();
+                    await signInAnonymously(auth);
                 }
-
-                if (requestId !== musicRequestId) return;
-
-                const results = Array.isArray(data.data) ? data.data : [];
-                const playableResults = results.filter(track => track && track.isStreamable !== false);
-
-                musicTracks = reset ? playableResults : [...musicTracks, ...playableResults];
-                musicOffset += results.length;
-                musicHasMore = results.length > 0 && results.length >= 100;
-
-                renderMusicTracks();
             } catch (err) {
-                console.error('Error fetching Audius music:', err);
-                if (reset) {
-                    gridEl.innerHTML =
-                        `<div class="col-span-full text-center text-xs text-red-400 py-8">Failed to load music. ${escapeHtml(err.message || 'Please try again.')}</div>`;
-                }
-            } finally {
-                if (requestId === musicRequestId) {
-                    loadingEl.classList.add('hidden');
+                console.error("Auth error:", err);
+                try {
+                    await signInAnonymously(auth);
+                } catch (e) {
+                    console.error("Anonymous auth failed:", e);
                 }
             }
-        }
 
-        async function loadMoreAudiusMusic() {
-            if (!musicHasMore) return;
-            const query = document.getElementById('musicSearchInput').value.trim();
-            await fetchAudiusMusic(query, activeGenre, false);
-        }
-
-        function renderMusicTracks() {
-            const gridEl = document.getElementById('musicTracksGrid');
-            gridEl.innerHTML = '';
-
-            if (musicTracks.length === 0) {
-                gridEl.innerHTML =
-                    '<div class="col-span-full text-center text-xs text-neutral-500 py-12">No tracks found. Try a different search or genre.</div>';
-                return;
-            }
-
-            musicTracks.forEach((track, idx) => {
-                const isCurrent = (currentTrackIndex === idx && isMusicPlaying);
-                const card = document.createElement('div');
-                card.className =
-                    `bg-neutral-950 border ${isCurrent ? 'border-white' : 'border-neutral-900 hover:border-neutral-700'} rounded-2xl p-3 flex items-center space-x-3 transition-colors cursor-pointer group`;
-                card.onclick = () => playTrack(idx);
-
-                const artwork = track.artwork || track.cover_art || {};
-                const albumArt = typeof artwork === 'string' ?
-                    artwork :
-                    (artwork._150x150 || artwork['150x150'] || artwork._480x480 || artwork['480x480'] || artwork
-                        ._1000x1000 || artwork['1000x1000'] || artwork._600x600 || artwork['600x600'] || track.image ||
-                        track.thumbnail ||
-                        'https://placehold.co/120x120/111/fff?text=Music');
-                const title = track.title || 'Untitled';
-                const artist = track.user?.name || track.user?.handle || 'Unknown artist';
-                const duration = Number(track.duration) || 0;
-                const durationMin = Math.floor(duration / 60);
-                const durationSec = String(duration % 60).padStart(2, '0');
-
-                card.innerHTML = `
-                        <div class="relative w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-neutral-900 border border-neutral-800">
-                            <img src="${escapeHtml(albumArt)}" alt="${escapeHtml(title)}" class="w-full h-full object-cover group-hover:scale-105 transition-transform" onerror="this.onerror=null;this.src='https://placehold.co/100x100/111/fff?text=Track';" />
-                            <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                <i class="fa-solid ${isCurrent ? 'fa-pause' : 'fa-play'} text-white text-xs"></i>
-                            </div>
-                        </div>
-                        <div class="flex-1 truncate">
-                            <h4 class="text-xs font-bold text-white truncate">${escapeHtml(title)}</h4>
-                            <p class="text-[11px] text-neutral-400 truncate">${escapeHtml(artist)}</p>
-                        </div>
-                        <span class="text-[10px] text-neutral-500 font-mono shrink-0">${durationMin}:${durationSec}</span>
-                    `;
-                gridEl.appendChild(card);
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    currentUser = user;
+                    window.currentUserId = user.uid;
+                    setupGlobalListener(user.uid);
+                }
             });
+        }
 
-            if (musicHasMore) {
-                const moreWrap = document.createElement('div');
-                moreWrap.className = 'col-span-full flex justify-center pt-2 pb-8';
-                const moreBtn = document.createElement('button');
-                moreBtn.className =
-                    'px-4 py-2 rounded-xl bg-neutral-900 border border-neutral-800 text-xs text-neutral-300 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer';
-                moreBtn.innerText = 'Load More Music';
-                moreBtn.onclick = () => loadMoreAudiusMusic();
-                moreWrap.appendChild(moreBtn);
-                gridEl.appendChild(moreWrap);
+        function setupGlobalListener(uid) {
+            if (!uid) return;
+            const messagesRef = collection(db, 'artifacts', appId, 'public', 'data', 'global_messages');
+            
+            // Listen in real-time via onSnapshot with error callback
+            onSnapshot(messagesRef, (snapshot) => {
+                const fetchedMessages = [];
+                snapshot.forEach((docSnap) => {
+                    const data = docSnap.data();
+                    data.id = docSnap.id;
+                    fetchedMessages.push(data);
+                });
+                
+                // Sort in memory by timestamp
+                fetchedMessages.sort((a, b) => (a.created_at || 0) - (b.created_at || 0));
+                window.globalMessages = fetchedMessages;
+
+                if (window.currentView === 'global') {
+                    window.renderGlobalMessages();
+                }
+            }, (error) => {
+                console.error("Firestore snapshot error:", error);
+            });
+        }
+
+        window.sendGlobalMessageToFirestore = async function(messageObj) {
+            if (!auth.currentUser) return;
+            try {
+                const messagesRef = collection(db, 'artifacts', appId, 'public', 'data', 'global_messages');
+                await addDoc(messagesRef, messageObj);
+            } catch (e) {
+                console.error("Error sending message to Firestore:", e);
+            }
+        };
+
+        initAuth();
+    </script>
+
+    <script>
+        const API_CONFIG = {
+            apiKey: "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",
+            model: "openrouter/auto",
+            endpoint: "https://openrouter.ai/api/v1/chat/completions",
+            systemPrompt: "You are Parasite A.I, an intelligent academic assistant. You ONLY help with mathematics, formal academic studies, science explanations, homework, and general conversations. You are extremely strict and uncompromising: you MUST REFUSE to help with ANY coding, programming, software development, debugging, script-writing, or code-related questions under any circumstances. If a user asks anything about code, politely refuse and remind them you only handle math and study topics."
+        };
+
+        // Anonymous session ID
+        let myUserId = localStorage.getItem('parasite_user_id');
+        if (!myUserId) {
+            myUserId = 'user_' + Math.random().toString(36).substring(2, 10);
+            localStorage.setItem('parasite_user_id', myUserId);
+        }
+
+        let currentView = 'ai';
+        let chats = JSON.parse(localStorage.getItem('parasite_chats')) || [];
+        let currentChatId = localStorage.getItem('parasite_current_chat') || null;
+        let isGenerating = false;
+        let abortController = null;
+        let busyServerTimer = null;
+        let replyingTo = null;
+
+        // PROFANITY FILTER
+        const badWordsList = [
+            'damn', 'hell', 'crap', 'fuck', 'shit', 'bitch', 'ass', 'bastard', 'dick', 'piss', 'cunt', 'slut', 'whore',
+            'shut up', 'idiot', 'stupid', 'dumb', 'trash', 'useless', 'moron', 'suck',
+            'kys', 'kill yourself', 'retard', 'fag', 'faggot', 'nigger', 'nigga', 'tranny', 'chink', 'spic', 'kike',
+            'loser', 'ugly', 'fat', 'worthless', 'die', 'jerk', 'asshole', 'dickhead', 'motherfucker',
+            'psycho', 'freak', 'scum', 'pussy', 'cock', 'twat', 'cunt'
+        ];
+
+        function filterProfanity(text) {
+            if (!text) return text;
+            let filtered = text;
+            badWordsList.forEach(word => {
+                const regex = new RegExp(`\\b${word}\\b`, 'gi');
+                filtered = filtered.replace(regex, '***');
+                if (word.length > 4) {
+                    const subRegex = new RegExp(word, 'gi');
+                    filtered = filtered.replace(subRegex, '***');
+                }
+            });
+            return filtered;
+        }
+
+        let moderationData = JSON.parse(localStorage.getItem('parasite_moderation')) || {
+            warnings: 0,
+            lastWarningTime: null,
+            bannedUntil: null
+        };
+
+        function checkAndResetWarnings() {
+            const now = Date.now();
+            const ONE_DAY = 24 * 60 * 60 * 1000;
+            if (moderationData.lastWarningTime && (now - moderationData.lastWarningTime > ONE_DAY)) {
+                if (!moderationData.bannedUntil) {
+                    moderationData.warnings = 0;
+                    moderationData.lastWarningTime = null;
+                    saveModerationState();
+                }
             }
         }
 
-        function getTrackStreamUrl(track) {
-            return buildAudiusUrl(`/tracks/${encodeURIComponent(track.id)}/stream`);
+        function saveModerationState() {
+            localStorage.setItem('parasite_moderation', JSON.stringify(moderationData));
+            updateWarningDisplay();
         }
 
-        function getTrackArtist(track) {
-            return track.user?.name || track.user?.handle || 'Unknown artist';
-        }
-
-        function preloadNextTrack() {
-            if (nextTrackPreloader) {
-                nextTrackPreloader.src = '';
-                nextTrackPreloader = null;
-            }
-
-            if (!musicTracks.length) return;
-
-            const nextIndex = (currentTrackIndex + 1) % musicTracks.length;
-            const next = musicTracks[nextIndex];
-            if (!next?.id) return;
-
-            nextTrackPreloader = new Audio();
-            nextTrackPreloader.preload = 'auto';
-            nextTrackPreloader.src = getTrackStreamUrl(next);
-            nextTrackPreloader.load();
-        }
-
-        function playTrack(index) {
-            if (!musicTracks[index]) return;
-
-            currentTrackIndex = index;
-            const track = musicTracks[index];
-            const streamUrl = getTrackStreamUrl(track);
-
-            playerClosed = false;
-            if (!document.getElementById('musicSection').classList.contains('hidden')) {
-                setPlayerMode(false);
+        function updateWarningDisplay() {
+            const badgeContainer = document.getElementById('warningBadgeContainer');
+            const countDisplay = document.getElementById('warningCountDisplay');
+            if (moderationData.warnings > 0) {
+                badgeContainer.classList.remove('hidden');
+                countDisplay.innerText = `${moderationData.warnings} / 5`;
             } else {
-                setPlayerMode(true);
-            }
-
-            const currentSrc = audioPlayer.src ? decodeURIComponent(audioPlayer.src) : '';
-            if (currentSrc !== streamUrl) {
-                audioPlayer.src = streamUrl;
-                audioPlayer.preload = 'auto';
-                audioPlayer.load();
-            }
-
-            updatePlayerUI();
-
-            audioPlayer.play().then(() => {
-                isMusicPlaying = true;
-                updatePlayerUI();
-                renderMusicTracks();
-                preloadNextTrack();
-            }).catch(e => {
-                console.error('Audius playback error:', e);
-                isMusicPlaying = false;
-                updatePlayerUI();
-                renderMusicTracks();
-            });
-        }
-
-        function togglePlayPause() {
-            if (!audioPlayer.src && musicTracks.length > 0) {
-                playTrack(0);
-                return;
-            }
-
-            if (audioPlayer.paused) {
-                audioPlayer.play().then(() => {
-                    isMusicPlaying = true;
-                    playerClosed = false;
-                    updatePlayerUI();
-                    renderMusicTracks();
-                }).catch(e => console.error('Play error:', e));
-            } else {
-                audioPlayer.pause();
-                isMusicPlaying = false;
-                updatePlayerUI();
-                renderMusicTracks();
+                badgeContainer.classList.add('hidden');
             }
         }
 
-        function playNextTrack() {
-            if (musicTracks.length === 0) return;
-            currentTrackIndex = (currentTrackIndex + 1) % musicTracks.length;
-            playTrack(currentTrackIndex);
-        }
-
-        function playPrevTrack() {
-            if (musicTracks.length === 0) return;
-            currentTrackIndex = (currentTrackIndex - 1 + musicTracks.length) % musicTracks.length;
-            playTrack(currentTrackIndex);
-        }
-
-        function updatePlayerUI() {
-            const playerBar = document.getElementById('persistentPlayerBar');
-            const track = musicTracks[currentTrackIndex];
-            if (!playerBar || !track) return;
-
-            playerClosed = false;
-            playerBar.classList.remove('hidden');
-
-            document.getElementById('playerTrackTitle').innerText = track.title || 'Untitled';
-            document.getElementById('playerArtistName').innerText = getTrackArtist(track);
-            const playerArtwork = track.artwork || track.cover_art || {};
-            document.getElementById('playerAlbumArt').src =
-                (typeof playerArtwork === 'string' ?
-                    playerArtwork :
-                    (playerArtwork._480x480 || playerArtwork['480x480'] || playerArtwork._150x150 || playerArtwork[
-                        '150x150'] || playerArtwork._1000x1000 || playerArtwork['1000x1000'])) ||
-                track.image || track.thumbnail ||
-                'https://placehold.co/100x100/111/fff?text=Music';
-
-            const btn = document.getElementById('playerPlayPauseBtn');
-            btn.innerHTML = `<i class="fa-solid ${isMusicPlaying ? 'fa-pause' : 'fa-play'} text-xs"></i>`;
-        }
-
-        function closePlayerBar(event) {
-            if (event) event.stopPropagation();
-            const playerBar = document.getElementById('persistentPlayerBar');
-            if (!playerBar) return;
-            playerClosed = true;
-            playerBar.classList.add('hidden');
-            playerBar.classList.remove('dragging');
-            playerDragState = null;
-        }
-
-        function setPlayerMode(mini) {
-            const playerBar = document.getElementById('persistentPlayerBar');
-            if (!playerBar) return;
-
-            playerIsMini = mini;
-            playerBar.classList.remove('player-bar-expanded', 'player-bar-mini');
-            if (mini) {
-                playerBar.classList.add('player-bar-mini');
-            } else {
-                playerBar.classList.add('player-bar-expanded');
-            }
-        }
-
-        function clampPlayerPosition(x, y) {
-            const bar = document.getElementById('persistentPlayerBar');
-            if (!bar) return { x, y };
-
-            const margin = 8;
-            const maxX = Math.max(margin, window.innerWidth - bar.offsetWidth - margin);
-            const maxY = Math.max(margin, window.innerHeight - bar.offsetHeight - margin);
-            return {
-                x: Math.min(Math.max(margin, x), maxX),
-                y: Math.min(Math.max(margin, y), maxY)
-            };
-        }
-
-        function resetPlayerPositionForMode() {
-            const bar = document.getElementById('persistentPlayerBar');
-            if (!bar || !playerIsMini) return;
-
-            const rect = bar.getBoundingClientRect();
-            const target = clampPlayerPosition(window.innerWidth - rect.width - 14, window.innerHeight - rect.height - 80);
-            bar.style.left = `${target.x}px`;
-            bar.style.top = `${target.y}px`;
-            bar.style.right = 'auto';
-            bar.style.bottom = 'auto';
-        }
-
-        function beginPlayerDrag(e) {
-            const bar = document.getElementById('persistentPlayerBar');
-            const handle = document.getElementById('playerDragHandle');
-            if (!bar || !handle || !playerIsMini) return;
-            if (e.target.closest('button, input')) return;
-
-            const rect = bar.getBoundingClientRect();
-            playerDragState = {
-                offsetX: e.clientX - rect.left,
-                offsetY: e.clientY - rect.top
-            };
-
-            bar.classList.add('dragging');
-            if (handle.setPointerCapture) handle.setPointerCapture(e.pointerId);
-            e.preventDefault();
-        }
-
-        function movePlayerDrag(e) {
-            if (!playerDragState) return;
-            const bar = document.getElementById('persistentPlayerBar');
-            if (!bar) return;
-
-            const next = clampPlayerPosition(
-                e.clientX - playerDragState.offsetX,
-                e.clientY - playerDragState.offsetY
-            );
-
-            bar.style.left = `${next.x}px`;
-            bar.style.top = `${next.y}px`;
-            bar.style.right = 'auto';
-            bar.style.bottom = 'auto';
-        }
-
-        function endPlayerDrag(e) {
-            if (!playerDragState) return;
-            const bar = document.getElementById('persistentPlayerBar');
-            if (bar) bar.classList.remove('dragging');
-            playerDragState = null;
-        }
-
-        function initDraggablePlayer() {
-            const handle = document.getElementById('playerDragHandle');
-            if (!handle) return;
-
-            handle.addEventListener('pointerdown', beginPlayerDrag);
-            handle.addEventListener('pointermove', movePlayerDrag);
-            handle.addEventListener('pointerup', endPlayerDrag);
-            handle.addEventListener('pointercancel', endPlayerDrag);
-        }
-
-        audioPlayer.onplay = function() {
-            isMusicPlaying = true;
-            playerClosed = false;
-            updatePlayerUI();
-            renderMusicTracks();
-            preloadNextTrack();
-        };
-
-        audioPlayer.onpause = function() {
-            isMusicPlaying = false;
-            updatePlayerUI();
-            renderMusicTracks();
-        };
-
-        audioPlayer.ontimeupdate = function() {
-            const current = audioPlayer.currentTime;
-            const duration = audioPlayer.duration || 1;
-            const percent = duration > 0 ? (current / duration) * 100 : 0;
-
-            document.getElementById('trackSeekBar').value = Number.isFinite(percent) ? percent : 0;
-
-            const curMin = Math.floor(current / 60);
-            const curSec = String(Math.floor(current % 60)).padStart(2, '0');
-            document.getElementById('currentTimeLabel').innerText = `${curMin}:${curSec}`;
-
-            const durMin = Math.floor(duration / 60);
-            const durSec = String(Math.floor(duration % 60)).padStart(2, '0');
-            document.getElementById('durationLabel').innerText = `${durMin}:${durSec}`;
-        };
-
-        audioPlayer.onended = function() {
-            playNextTrack();
-        };
-
-        audioPlayer.onerror = function() {
-            console.error('Audius stream error');
-        };
-
-        function seekTrack(val) {
-            if (!audioPlayer.duration) return;
-            audioPlayer.currentTime = (val / 100) * audioPlayer.duration;
-        }
-
-        function adjustVolume(val) {
-            audioPlayer.volume = val;
-        }
-
-        function handleMusicSearchKeydown(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                const query = e.target.value.trim();
-                fetchAudiusMusic(query, activeGenre, true);
-            }
-        }
-
-        function filterByGenre(genre, btnEl) {
-            activeGenre = genre;
-            document.querySelectorAll('.genre-btn').forEach(b => {
-                b.className =
-                    'genre-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 shrink-0 transition-colors cursor-pointer';
-            });
-            btnEl.className =
-                'genre-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-black shrink-0 transition-colors cursor-pointer';
-
-            const searchQuery = document.getElementById('musicSearchInput').value.trim();
-            fetchAudiusMusic(searchQuery, activeGenre, true);
-        }
-
-        function initCustomEditAndRenameUI() {
-            document.getElementById('closeImageEditBtn')?.addEventListener('click', closeImageEditUI);
-            document.getElementById('cancelImageEditBtn')?.addEventListener('click', closeImageEditUI);
-            document.getElementById('applyImageEditBtn')?.addEventListener('click', submitImageEdit);
-
-            document.querySelectorAll('.edit-chip').forEach(btn => {
-                btn.addEventListener('click', () => insertImageEditPreset(btn.dataset.edit || ''));
-            });
-
-            document.getElementById('imageEditPreserveToggle')?.addEventListener('click', () => {
-                imageEditPreserve = !imageEditPreserve;
-                updateImageEditPreserveUI();
-            });
-        }
-
-        window.addEventListener('resize', () => {
-            if (playerIsMini) resetPlayerPositionForMode();
-        });
-
-        function isPromptSafe(text) {
-            if (!text) return true;
+        function checkSlursOrBullying(text) {
             const lower = text.toLowerCase();
-
-            const strictForbiddenWords = [
-                'porn', 'nsfw', 'naked', 'nude', 'explicit', 'erotic', 'rape', 'incest', 'bestiality',
-                'prostitute', 'escort', 'orgasm', 'fetish', 'bdsm', 'gore', 'terrorist', 'torture',
-                'corpse', 'slaughter', 'massacre', 'behead', 'overdose', 'ransomware', 'phishing'
-            ];
-
-            const words = lower.split(/[^a-z0-9]+/);
-            for (const word of strictForbiddenWords) {
-                if (words.includes(word)) {
-                    return false;
+            return badWordsList.some(item => {
+                if (item.length <= 4) {
+                    const regex = new RegExp(`\\b${item}\\b`, 'i');
+                    return regex.test(lower);
+                } else {
+                    return lower.includes(item);
                 }
-            }
-            return true;
+            });
         }
 
-        // ---- IMAGE FILTER REMOVED ----
-        // The function isImagePromptSafe is no longer used.
-        // All image prompts are now allowed.
+        function checkBanStatus() {
+            const now = Date.now();
+            if (moderationData.bannedUntil) {
+                if (now >= moderationData.bannedUntil) {
+                    moderationData.bannedUntil = null;
+                    moderationData.warnings = 0;
+                    saveModerationState();
+                    document.getElementById('banScreen').classList.add('hidden');
+                } else {
+                    document.getElementById('banScreen').classList.remove('hidden');
+                    const remainingHours = Math.ceil((moderationData.bannedUntil - now) / (1000 * 60 * 60));
+                    document.getElementById('banMessage').innerText = `You have been suspended for violating strict rules regarding slurs, bullying, and profanity. Access is restricted for ${remainingHours} more hours.`;
+                }
+            } else {
+                document.getElementById('banScreen').classList.add('hidden');
+            }
+        }
+
+        function checkUnbanPassword() {
+            const inputVal = document.getElementById('unbanPasswordInput').value.trim();
+            const errEl = document.getElementById('unbanError');
+            if (inputVal === "CANDYCANE") {
+                moderationData.bannedUntil = null;
+                moderationData.warnings = 0;
+                moderationData.lastWarningTime = null;
+                saveModerationState();
+                document.getElementById('banScreen').classList.add('hidden');
+                document.getElementById('unbanPasswordInput').value = '';
+                errEl.classList.add('hidden');
+            } else {
+                errEl.innerText = "Incorrect security bypass password. Access denied.";
+                errEl.classList.remove('hidden');
+            }
+        }
+
+        function openCustomModal({ title, message, showInput, inputValue, onConfirm }) {
+            const modal = document.getElementById('customModal');
+            const titleEl = document.getElementById('modalTitle');
+            const msgEl = document.getElementById('modalMessage');
+            const inputContainer = document.getElementById('modalInputContainer');
+            const inputEl = document.getElementById('modalInput');
+            const confirmBtn = document.getElementById('modalConfirmBtn');
+            const cancelBtn = document.getElementById('modalCancelBtn');
+
+            titleEl.innerText = title;
+            if (message) {
+                msgEl.innerText = message;
+                msgEl.classList.remove('hidden');
+            } else {
+                msgEl.classList.add('hidden');
+            }
+
+            if (showInput) {
+                inputContainer.classList.remove('hidden');
+                inputEl.value = inputValue || '';
+                setTimeout(() => inputEl.focus(), 50);
+            } else {
+                inputContainer.classList.add('hidden');
+            }
+
+            modal.classList.remove('hidden');
+
+            const newConfirmBtn = confirmBtn.cloneNode(true);
+            const newCancelBtn = cancelBtn.cloneNode(true);
+            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+            cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+
+            newConfirmBtn.onclick = () => {
+                modal.classList.add('hidden');
+                if (showInput) {
+                    onConfirm(inputEl.value);
+                } else {
+                    onConfirm(true);
+                }
+            };
+
+            newCancelBtn.onclick = () => {
+                modal.classList.add('hidden');
+            };
+
+            if (showInput) {
+                inputEl.onkeydown = (e) => {
+                    if (e.key === 'Enter') {
+                        newConfirmBtn.click();
+                    }
+                };
+            }
+        }
 
         window.onload = function() {
-            document.getElementById('imageModelSelector').value = currentImageModel;
-            document.getElementById('imageAspectRatioSelector').value = currentAspectRatio;
+            checkAndResetWarnings();
+            checkBanStatus();
 
-            let savedApiKey = localStorage.getItem('openrouter_api_key') || '';
-            document.getElementById('apiKeyInput').value = savedApiKey;
-
-            renderChatHistory();
-            renderGlobalMemoryList();
-            updateNotificationUI();
-            checkAdBlocker();
-            initDraggablePlayer();
-            initCustomEditAndRenameUI();
+            if (chats.length === 0) {
+                createNewChat(false);
+            } else {
+                if (!currentChatId || !chats.find(c => c.id === currentChatId)) {
+                    currentChatId = chats[0].id;
+                }
+                renderChatList();
+                loadCurrentChat();
+            }
+            updateStorageDisplay();
+            updateWarningDisplay();
         };
 
-        async function toggleNotifications() {
-            if (!notificationsEnabled) {
-                if (!("Notification" in window)) {
+        function switchView(view) {
+            currentView = view;
+            window.currentView = view;
+            const aiBtn = document.getElementById('navAiBtn');
+            const globalBtn = document.getElementById('navGlobalBtn');
+            const aiActions = document.getElementById('aiHeaderActions');
+            const chatHistory = document.getElementById('chatHistoryList');
+            const globalInfo = document.getElementById('globalSidebarInfo');
+            const disclaimer = document.getElementById('footerDisclaimer');
+            const userInput = document.getElementById('userInput');
+
+            if (view === 'ai') {
+                aiBtn.className = "flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-semibold transition-colors bg-zinc-800 text-white border border-zinc-700";
+                globalBtn.className = "flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-semibold transition-colors bg-dark-950 text-zinc-400 hover:text-zinc-200 border border-dark-800";
+                aiActions.classList.remove('hidden');
+                chatHistory.classList.remove('hidden');
+                globalInfo.classList.add('hidden');
+                disclaimer.innerText = "Parasite A.I can make mistakes. Verify critical info.";
+                userInput.placeholder = "Message Parasite A.I...";
+                cancelReply();
+                loadCurrentChat();
+            } else {
+                globalBtn.className = "flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-semibold transition-colors bg-zinc-800 text-white border border-zinc-700";
+                aiBtn.className = "flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-semibold transition-colors bg-dark-950 text-zinc-400 hover:text-zinc-200 border border-dark-800";
+                aiActions.classList.add('hidden');
+                chatHistory.classList.add('hidden');
+                globalInfo.classList.remove('hidden');
+                document.getElementById('currentChatTitle').innerText = "Global Channel";
+                disclaimer.innerText = "Global Chat: Be respectful. Profanity is filtered.";
+                userInput.placeholder = "Send a message to everyone...";
+                renderGlobalMessages();
+            }
+            if (window.innerWidth < 768) toggleSidebar();
+        }
+
+        function saveState() {
+            localStorage.setItem('parasite_chats', JSON.stringify(chats));
+            localStorage.setItem('parasite_current_chat', currentChatId);
+            updateStorageDisplay();
+        }
+
+        function updateStorageDisplay() {
+            const dataString = JSON.stringify(chats);
+            const bytes = new Blob([dataString]).size;
+            const kb = bytes / 1024;
+            const simulatedGB = (0.01 + (kb / 1024) * 0.1).toFixed(2);
+            
+            document.getElementById('storageText').innerText = `${simulatedGB} GB / 2.00 GB`;
+            const percentage = Math.min(Math.max((chats.length / 100) * 100, 1), 100);
+            document.getElementById('storageBar').style.width = `${percentage}%`;
+        }
+
+        function createNewChat(selectNew = true) {
+            if (chats.length > 0) {
+                const currentChat = chats.find(c => c.id === currentChatId);
+                if (currentChat && currentChat.messages.length === 0) {
                     return;
                 }
-                const permission = await Notification.requestPermission();
-                if (permission === "granted") {
-                    notificationsEnabled = true;
-                    localStorage.setItem('parasite_ai_notifications', 'true');
-                } else {
-                    notificationsEnabled = false;
-                    localStorage.setItem('parasite_ai_notifications', 'false');
-                }
-            } else {
-                notificationsEnabled = false;
-                localStorage.setItem('parasite_ai_notifications', 'false');
             }
-            updateNotificationUI();
-        }
 
-        function updateNotificationUI() {
-            const btn = document.getElementById('notificationToggleBtn');
-            const thumb = document.getElementById('notificationToggleThumb');
-            if (!btn || !thumb) return;
-            if (notificationsEnabled && Notification.permission === 'granted') {
-                btn.className = 'w-10 h-6 bg-white rounded-full transition-colors relative p-1 cursor-pointer';
-                thumb.className = 'w-4 h-4 bg-black rounded-full transition-transform translate-x-4';
-            } else {
-                notificationsEnabled = false;
-                localStorage.setItem('parasite_ai_notifications', 'false');
-                btn.className = 'w-10 h-6 bg-neutral-800 rounded-full transition-colors relative p-1 cursor-pointer';
-                thumb.className = 'w-4 h-4 bg-neutral-400 rounded-full transition-transform translate-x-0';
-            }
-        }
-
-        function triggerNotification() {
-            if (notificationsEnabled && Notification.permission === 'granted') {
-                try {
-                    new Notification("Parasite Studio's", {
-                        body: "Your response is ready!",
-                        icon: "https://placehold.co/128x128/111/fff?text=P"
-                    });
-                } catch (e) {
-                    console.error("Notification error:", e);
-                }
-            }
-        }
-
-        function setGeneratingState(generating) {
-            isGenerating = generating;
-            const sendBtn = document.getElementById('sendButton');
-            if (!sendBtn) return;
-            if (generating) {
-                sendBtn.innerHTML = '<i class="fa-solid fa-square text-xs"></i>';
-                sendBtn.title = 'Stop generation';
-                sendBtn.onclick = stopGeneration;
-            } else {
-                sendBtn.innerHTML = '<i class="fa-solid fa-arrow-up text-sm"></i>';
-                sendBtn.title = 'Send message';
-                sendBtn.onclick = sendMessage;
-            }
-        }
-
-        function stopGeneration() {
-            if (currentAbortController) {
-                currentAbortController.abort();
-                currentAbortController = null;
-            }
-            if (currentTypewriterTimeout) {
-                clearTimeout(currentTypewriterTimeout);
-                currentTypewriterTimeout = null;
-            }
-            setGeneratingState(false);
-            document.getElementById('statusDot').className = 'w-2 h-2 rounded-full bg-neutral-600 transition-colors';
-
-            const loadingEls = document.querySelectorAll('[id^="loading_"], [id^="img_msg_"]');
-            loadingEls.forEach(el => {
-                if (el.querySelector('.fa-spinner')) el.remove();
-            });
-        }
-
-        function checkAdBlocker() {
-            const bait = document.createElement('div');
-            bait.className = 'adsbox ad-banner pub_300x250';
-            bait.style.width = '1px';
-            bait.style.height = '1px';
-            bait.style.position = 'absolute';
-            bait.style.left = '-9999px';
-            document.body.appendChild(bait);
-
-            setTimeout(() => {
-                if (bait.offsetParent === null || bait.offsetHeight === 0 || window.getComputedStyle(bait)
-                    .display === 'none') {
-                    document.getElementById('antiAdBlockModal').classList.remove('hidden');
-                }
-                bait.remove();
-            }, 300);
-        }
-
-        function dismissAntiAdBlock() {
-            const bait = document.createElement('div');
-            bait.className = 'adsbox ad-banner pub_300x250';
-            bait.style.width = '1px';
-            bait.style.height = '1px';
-            bait.style.position = 'absolute';
-            bait.style.left = '-9999px';
-            document.body.appendChild(bait);
-
-            setTimeout(() => {
-                const isBlocked = (bait.offsetParent === null || bait.offsetHeight === 0 || window
-                    .getComputedStyle(bait).display === 'none');
-                bait.remove();
-
-                const errMsg = document.getElementById('adblockErrorMsg');
-                if (isBlocked) {
-                    if (errMsg) errMsg.classList.remove('hidden');
-                } else {
-                    if (errMsg) errMsg.classList.add('hidden');
-                    document.getElementById('antiAdBlockModal').classList.add('hidden');
-                }
-            }, 300);
-        }
-
-        function openApiKeyModal() {
-            document.getElementById('apiKeyModal').classList.remove('hidden');
-            renderGlobalMemoryList();
-            updateNotificationUI();
-        }
-
-        function closeApiKeyModal() {
-            document.getElementById('apiKeyModal').classList.add('hidden');
-        }
-
-        function saveApiKey() {
-            const val = document.getElementById('apiKeyInput').value.trim();
-            if (val) {
-                localStorage.setItem('openrouter_api_key', val);
-            }
-            closeApiKeyModal();
-        }
-
-        function renderGlobalMemoryList() {
-            const list = document.getElementById('globalMemoryList');
-            if (!list) return;
-            if (globalMemory.length === 0) {
-                list.innerHTML = '<div class="text-xs text-neutral-500 text-center py-3">No stored memories yet.</div>';
+            if (chats.length >= 100) {
+                openCustomModal({
+                    title: 'Storage Limit Reached',
+                    message: 'You have reached the maximum limit of 100 chats. Please delete some chats to create more.',
+                    showInput: false,
+                    onConfirm: () => {}
+                });
                 return;
             }
-            list.innerHTML = '';
-            globalMemory.forEach((mem, idx) => {
-                const div = document.createElement('div');
-                div.className =
-                    'flex items-center justify-between bg-neutral-900 border border-neutral-800 p-2 rounded-lg text-xs text-neutral-300';
-                div.innerHTML = `
-                        <span class="truncate pr-2">${escapeHtml(mem)}</span>
-                        <button onclick="deleteMemoryItem(${idx})" class="text-neutral-500 hover:text-red-400 p-1 cursor-pointer shrink-0"><i class="fa-solid fa-trash text-[10px]"></i></button>
-                    `;
-                list.appendChild(div);
-            });
-        }
 
-        function deleteMemoryItem(index) {
-            globalMemory.splice(index, 1);
-            localStorage.setItem('parasite_ai_global_memory', JSON.stringify(globalMemory));
-            renderGlobalMemoryList();
-        }
-
-        function deleteAllMemory() {
-            globalMemory = [];
-            localStorage.setItem('parasite_ai_global_memory', JSON.stringify(globalMemory));
-            renderGlobalMemoryList();
-        }
-
-        function startNewChat() {
-            if (chats.length > 0 && chats[0].messages.length === 0) {
-                return;
-            }
-            currentChatId = 'chat_' + Date.now();
-            const newChatObj = {
-                id: currentChatId,
+            const newChat = {
+                id: 'chat_' + Date.now(),
                 title: 'New Conversation',
                 messages: []
             };
-            chats.unshift(newChatObj);
-            saveChats();
-            renderChatHistory();
-            renderActiveChat();
-            document.getElementById('headerTitle').innerText = 'Conversational Assistant';
+            chats.unshift(newChat);
+            currentChatId = newChat.id;
+            saveState();
+            renderChatList();
+            loadCurrentChat();
+            if (window.innerWidth < 768) toggleSidebar();
         }
 
-        function saveChats() {
-            localStorage.setItem('parasite_ai_chats', JSON.stringify(chats));
+        function selectChat(id) {
+            currentChatId = id;
+            saveState();
+            renderChatList();
+            loadCurrentChat();
+            if (window.innerWidth < 768) toggleSidebar();
         }
 
-        function filterChatHistory(query) {
-            const list = document.getElementById('chatHistoryList');
-            const items = list.children;
-            const q = query.toLowerCase();
-            chats.forEach((chat, idx) => {
-                if (items[idx]) {
-                    if (chat.title.toLowerCase().includes(q)) {
-                        items[idx].style.display = '';
-                    } else {
-                        items[idx].style.display = 'none';
+        function renameChat(id, event) {
+            event.stopPropagation();
+            const chat = chats.find(c => c.id === id);
+            if (!chat) return;
+            openCustomModal({
+                title: 'Rename Chat',
+                showInput: true,
+                inputValue: chat.title,
+                onConfirm: (newTitle) => {
+                    if (newTitle && newTitle.trim() !== "") {
+                        chat.title = newTitle.trim();
+                        saveState();
+                        renderChatList();
+                        if (currentChatId === id) {
+                            document.getElementById('currentChatTitle').innerText = chat.title;
+                        }
                     }
                 }
             });
         }
 
-        // ---- CHAT HISTORY (rename button removed) ----
-        function renderChatHistory() {
-            const list = document.getElementById('chatHistoryList');
-            list.innerHTML = '';
+        function deleteChat(id, event) {
+            event.stopPropagation();
+            if (chats.length <= 1) {
+                openCustomModal({
+                    title: 'Cannot Delete',
+                    message: 'You must keep at least one active conversation.',
+                    showInput: false,
+                    onConfirm: () => {}
+                });
+                return;
+            }
+            openCustomModal({
+                title: 'Delete Chat',
+                message: 'Are you sure you want to delete this conversation? This action cannot be undone.',
+                showInput: false,
+                onConfirm: () => {
+                    chats = chats.filter(c => c.id !== id);
+                    if (currentChatId === id) {
+                        currentChatId = chats[0].id;
+                    }
+                    saveState();
+                    renderChatList();
+                    loadCurrentChat();
+                }
+            });
+        }
+
+        function renderChatList() {
+            const listEl = document.getElementById('chatHistoryList');
+            listEl.innerHTML = '';
             chats.forEach(chat => {
                 const isActive = chat.id === currentChatId;
-                const div = document.createElement('div');
-                div.className =
-                    `group flex items-center justify-between px-3 py-2 rounded-lg text-xs cursor-pointer transition-colors ${isActive ? 'bg-neutral-900 text-white font-medium' : 'text-neutral-400 hover:bg-neutral-900/50 hover:text-white'}`;
-                div.onclick = () => loadChat(chat.id);
-
-                const span = document.createElement('span');
-                span.className = 'truncate pr-2 flex-1';
-                span.innerText = chat.title;
-                div.appendChild(span);
+                const item = document.createElement('div');
+                item.className = `group flex items-center justify-between px-3 py-2.5 rounded-xl text-sm cursor-pointer transition-all ${isActive ? 'bg-zinc-800 text-white font-medium border border-zinc-700/50' : 'text-zinc-400 hover:bg-dark-800 hover:text-zinc-200'}`;
+                item.onclick = () => selectChat(chat.id);
+                
+                const titleSpan = document.createElement('span');
+                titleSpan.className = 'truncate flex-1 pr-2';
+                titleSpan.innerText = chat.title;
 
                 const actionsDiv = document.createElement('div');
-                actionsDiv.className = 'opacity-0 group-hover:opacity-100 flex items-center space-x-1 shrink-0';
+                actionsDiv.className = 'hidden group-hover:flex items-center gap-1.5';
 
-                const delBtn = document.createElement('button');
-                delBtn.className = 'text-neutral-500 hover:text-white p-1 cursor-pointer';
-                delBtn.title = 'Delete chat';
-                delBtn.innerHTML = '<i class="fa-solid fa-trash-can text-[10px]"></i>';
-                delBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    deleteChat(chat.id);
-                };
-                actionsDiv.appendChild(delBtn);
+                const renameBtn = document.createElement('button');
+                renameBtn.className = 'p-1 text-zinc-400 hover:text-white';
+                renameBtn.innerHTML = '<i class="fa-solid fa-pen text-xs"></i>';
+                renameBtn.onclick = (e) => renameChat(chat.id, e);
 
-                div.appendChild(actionsDiv);
-                list.appendChild(div);
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'p-1 text-zinc-400 hover:text-red-400';
+                deleteBtn.innerHTML = '<i class="fa-solid fa-trash text-xs"></i>';
+                deleteBtn.onclick = (e) => deleteChat(chat.id, e);
+
+                actionsDiv.appendChild(renameBtn);
+                actionsDiv.appendChild(deleteBtn);
+
+                item.appendChild(titleSpan);
+                item.appendChild(actionsDiv);
+                listEl.appendChild(item);
             });
         }
 
-        function loadChat(id) {
-            currentChatId = id;
-            const chat = chats.find(c => c.id === id);
-            if (chat) {
-                renderActiveChat();
-                document.getElementById('headerTitle').innerText = chat.title;
-                renderChatHistory();
-            }
-        }
-
-        function deleteChat(id) {
-            chats = chats.filter(c => c.id !== id);
-            saveChats();
-            if (currentChatId === id) {
-                currentChatId = null;
-                renderActiveChat();
-                document.getElementById('headerTitle').innerText = 'Conversational Assistant';
-            }
-            renderChatHistory();
-        }
-
-        function renderActiveChat() {
-            const intro = document.getElementById('introScreen');
-            const messageList = document.getElementById('messageList');
-
+        function loadCurrentChat() {
+            if (currentView !== 'ai') return;
             const chat = chats.find(c => c.id === currentChatId);
+            if (!chat) return;
+            document.getElementById('currentChatTitle').innerText = chat.title;
+            const container = document.getElementById('chatContainer');
+            container.innerHTML = '';
 
-            if (!chat || chat.messages.length === 0) {
-                intro.classList.remove('hidden');
-                messageList.classList.add('hidden');
-                messageList.innerHTML = '';
-                return;
-            }
-
-            intro.classList.add('hidden');
-            messageList.classList.remove('hidden');
-            messageList.innerHTML = '';
-
-            chat.messages.forEach((msg, idx) => {
-                appendMessageNode(msg.role, msg.content, false, idx, msg.feedback || null, msg.image || null);
-            });
-            scrollToBottom();
-        }
-
-        function toggleWebSearch() {
-            webSearchMode = !webSearchMode;
-            const ind = document.getElementById('webSearchIndicator');
-            const btn = document.getElementById('webSearchToggle');
-            if (webSearchMode) {
-                ind.className = 'w-1.5 h-1.5 rounded-full bg-green-400';
-                btn.className =
-                    'text-xs px-2.5 py-1 rounded-md border border-neutral-700 bg-neutral-800 text-white transition-colors flex items-center space-x-1.5 cursor-pointer';
-            } else {
-                ind.className = 'w-1.5 h-1.5 rounded-full bg-neutral-600';
-                btn.className =
-                    'text-xs px-2.5 py-1 rounded-md border border-neutral-800 bg-neutral-900 text-neutral-400 hover:text-white transition-colors flex items-center space-x-1.5 cursor-pointer';
-            }
-        }
-
-        function toggleImageGen() {
-            imageGenMode = !imageGenMode;
-            const ind = document.getElementById('imageGenIndicator');
-            const btn = document.getElementById('imageGenToggle');
-            const modelContainer = document.getElementById('imageModelContainer');
-            const input = document.getElementById('userInput');
-
-            if (imageGenMode) {
-                ind.className = 'w-1.5 h-1.5 rounded-full bg-purple-400';
-                btn.className =
-                    'text-xs px-2.5 py-1 rounded-md border border-purple-800 bg-purple-950 text-white transition-colors flex items-center space-x-1.5 cursor-pointer';
-                modelContainer.classList.remove('hidden');
-                input.placeholder = 'Describe your image in rich detail (e.g., cinematic lighting, 8k)...';
-            } else {
-                ind.className = 'w-1.5 h-1.5 rounded-full bg-neutral-600';
-                btn.className =
-                    'text-xs px-2.5 py-1 rounded-md border border-neutral-800 bg-neutral-900 text-neutral-400 hover:text-white transition-colors flex items-center space-x-1.5 cursor-pointer';
-                modelContainer.classList.add('hidden');
-                input.placeholder = 'Type your message here or describe an image...';
-            }
-        }
-
-        function changeImageModel(val) {
-            currentImageModel = val;
-            localStorage.setItem('parasite_ai_image_model', val);
-        }
-
-        function changeAspectRatio(val) {
-            currentAspectRatio = val;
-            localStorage.setItem('parasite_ai_aspect_ratio', val);
-        }
-
-        function sendPreset(text) {
-            document.getElementById('userInput').value = text;
-            autoResize(document.getElementById('userInput'));
-            sendMessage();
-        }
-
-        function handleFileSelected(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            if (!file.type.startsWith('image/')) {
-                return;
-            }
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                attachedImage = {
-                    url: e.target.result,
-                    name: file.name
-                };
-                renderAttachmentPreview();
-                const input = document.getElementById('userInput');
-                input.value = '';
-                input.disabled = true;
-                input.placeholder = 'Image attached (typing disabled until sent or removed)...';
-            };
-            reader.readAsDataURL(file);
-            event.target.value = '';
-        }
-
-        function removeAttachment() {
-            attachedImage = null;
-            renderAttachmentPreview();
-            const input = document.getElementById('userInput');
-            input.disabled = false;
-            input.placeholder = imageGenMode ? 'Describe your image in rich detail...' :
-                'Type your message here or describe an image...';
-            input.focus();
-        }
-
-        function renderAttachmentPreview() {
-            const container = document.getElementById('attachmentPreviewContainer');
-            if (!container) return;
-            if (!attachedImage) {
-                container.classList.add('hidden');
-                container.innerHTML = '';
-                return;
-            }
-            container.classList.remove('hidden');
-            container.innerHTML = `
-                    <div class="inline-flex items-center space-x-2 bg-neutral-900 border border-neutral-800 rounded-lg p-1.5 pr-3">
-                        <img src="${escapeHtml(attachedImage.url)}" alt="Attachment" class="w-10 h-10 object-cover rounded-md border border-neutral-700" />
-                        <div class="flex flex-col text-left">
-                            <span class="text-xs font-medium text-white truncate max-w-[180px]">${escapeHtml(attachedImage.name)}</span>
-                            <span class="text-[10px] text-neutral-400">Attached image</span>
+            if (chat.messages.length === 0) {
+                container.innerHTML = `
+                    <div id="welcomeScreen" class="my-auto text-center max-w-md mx-auto space-y-4 px-4">
+                        <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-zinc-200 via-white to-zinc-400 ai-orb-pulse flex items-center justify-center mx-auto text-zinc-950 text-sm shadow-[0_0_15px_rgba(255,255,255,0.25)]">
+                            <div class="w-3 h-3 rounded-full bg-zinc-900/20 blur-[1px]"></div>
                         </div>
-                        <button onclick="removeAttachment()" class="text-neutral-400 hover:text-white p-1 ml-2 cursor-pointer" title="Remove attachment">
-                            <i class="fa-solid fa-xmark text-xs"></i>
-                        </button>
+                        <h2 class="text-xl font-semibold tracking-tight text-white">What are we talking about today?</h2>
+                        <p class="text-sm text-zinc-500 leading-relaxed">Ask anything or start a conversation.</p>
                     </div>
                 `;
+                return;
+            }
+
+            chat.messages.forEach(msg => appendMessageElement(msg, container, false));
+            container.scrollTop = container.scrollHeight;
         }
 
-        function handleKeydown(event) {
-            if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault();
-                sendMessage();
+        function renderGlobalMessages() {
+            if (currentView !== 'global') return;
+            const container = document.getElementById('chatContainer');
+            container.innerHTML = '';
+
+            if (!window.globalMessages || window.globalMessages.length === 0) {
+                container.innerHTML = `
+                    <div id="welcomeScreen" class="my-auto text-center max-w-md mx-auto space-y-4 px-4">
+                        <div class="w-8 h-8 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center mx-auto text-emerald-400 text-sm">
+                            <i class="fa-solid fa-globe"></i>
+                        </div>
+                        <h2 class="text-xl font-semibold tracking-tight text-white">Global Community Channel</h2>
+                        <p class="text-sm text-zinc-500 leading-relaxed">Be the first to say hello to everyone online!</p>
+                    </div>
+                `;
+                return;
             }
+
+            window.globalMessages.forEach(msg => appendGlobalMessageElement(msg, container));
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function appendMessageElement(msg, container, shouldScroll = true) {
+            const isUser = msg.role === 'user';
+            const wrapper = document.createElement('div');
+            wrapper.className = `w-full max-w-3xl flex gap-4 ${isUser ? 'justify-end' : 'justify-start'} mb-4`;
+
+            const inner = document.createElement('div');
+            inner.className = `flex gap-3 max-w-[85%] ${isUser ? 'flex-row-reverse' : 'flex-row'}`;
+
+            const avatar = document.createElement('div');
+            avatar.className = `w-7 h-7 rounded-full flex items-center justify-center text-xs shrink-0 ${isUser ? 'bg-zinc-700 text-zinc-200 font-bold' : 'bg-gradient-to-tr from-zinc-200 via-white to-zinc-400 text-zinc-950 font-bold shadow-sm'}`;
+            avatar.innerHTML = isUser ? '<i class="fa-solid fa-user text-[10px]"></i>' : '<i class="fa-solid fa-robot text-[10px]"></i>';
+
+            const bubble = document.createElement('div');
+            bubble.className = `px-4 py-3 rounded-2xl text-sm leading-relaxed ${isUser ? 'bg-zinc-800 text-zinc-100 rounded-tr-sm border border-zinc-700/50' : 'bg-dark-900 text-zinc-100 rounded-tl-sm border border-dark-800'}`;
+            
+            // Format newlines
+            bubble.innerHTML = escapeHtml(msg.content).replace(/\n/g, '<br>');
+
+            inner.appendChild(avatar);
+            inner.appendChild(bubble);
+            wrapper.appendChild(inner);
+            container.appendChild(wrapper);
+
+            if (shouldScroll) {
+                container.scrollTop = container.scrollHeight;
+            }
+        }
+
+        function appendGlobalMessageElement(msg, container) {
+            const isMyMsg = msg.sender_id === myUserId;
+            const wrapper = document.createElement('div');
+            wrapper.className = `w-full max-w-3xl flex gap-4 ${isMyMsg ? 'justify-end' : 'justify-start'} mb-4`;
+
+            const inner = document.createElement('div');
+            inner.className = `flex gap-3 max-w-[85%] ${isMyMsg ? 'flex-row-reverse' : 'flex-row'}`;
+
+            const avatar = document.createElement('div');
+            avatar.className = `w-7 h-7 rounded-full flex items-center justify-center text-xs shrink-0 bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 font-bold`;
+            avatar.innerHTML = '<i class="fa-solid fa-user text-[10px]"></i>';
+
+            const contentCol = document.createElement('div');
+            contentCol.className = `flex flex-col ${isMyMsg ? 'items-end' : 'items-start'} space-y-1`;
+
+            const senderLabel = document.createElement('span');
+            senderLabel.className = 'text-[11px] text-zinc-500 font-mono px-1';
+            senderLabel.innerText = msg.sender_name || 'Anonymous';
+
+            const bubble = document.createElement('div');
+            bubble.className = `px-4 py-3 rounded-2xl text-sm leading-relaxed ${isMyMsg ? 'bg-emerald-950/40 border border-emerald-500/30 text-emerald-100 rounded-tr-sm' : 'bg-dark-900 border border-dark-800 text-zinc-100 rounded-tl-sm'}`;
+            
+            if (msg.reply_to) {
+                const quoteDiv = document.createElement('div');
+                quoteDiv.className = 'mb-2 p-2 rounded-lg bg-black/30 border-l-2 border-orange-400 text-xs text-zinc-400';
+                quoteDiv.innerHTML = `<strong>@${escapeHtml(msg.reply_to.user)}:</strong> ${escapeHtml(msg.reply_to.text)}`;
+                bubble.appendChild(quoteDiv);
+            }
+
+            const textSpan = document.createElement('div');
+            textSpan.innerHTML = escapeHtml(msg.content).replace(/\n/g, '<br>');
+            bubble.appendChild(textSpan);
+
+            // Actions (Reply)
+            const actionsBar = document.createElement('div');
+            actionsBar.className = 'flex items-center gap-2 opacity-0 hover:opacity-100 transition-opacity px-1 text-[10px] text-zinc-500 pt-0.5';
+            
+            const replyBtn = document.createElement('button');
+            replyBtn.className = 'hover:text-zinc-300 flex items-center gap-1';
+            replyBtn.innerHTML = '<i class="fa-solid fa-reply"></i> Reply';
+            replyBtn.onclick = () => setReplyTo({ user: msg.sender_name || 'Anonymous', text: msg.content });
+            actionsBar.appendChild(replyBtn);
+
+            contentCol.appendChild(senderLabel);
+            contentCol.appendChild(bubble);
+            contentCol.appendChild(actionsBar);
+
+            inner.appendChild(avatar);
+            inner.appendChild(contentCol);
+            wrapper.appendChild(inner);
+            container.appendChild(wrapper);
+        }
+
+        function setReplyTo(info) {
+            replyingTo = info;
+            document.getElementById('replyingToUser').innerText = info.user;
+            document.getElementById('replyingToText').innerText = info.text;
+            document.getElementById('replyBanner').classList.remove('hidden');
+            document.getElementById('userInput').focus();
+        }
+
+        function cancelReply() {
+            replyingTo = null;
+            document.getElementById('replyBanner').classList.add('hidden');
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
         }
 
         function autoResize(textarea) {
             textarea.style.height = 'auto';
-            textarea.style.height = Math.min(textarea.scrollHeight, 128) + 'px';
+            textarea.style.height = Math.min(textarea.scrollHeight, 144) + 'px';
         }
 
-        // ---- SEND MESSAGE ----
-        async function sendMessage() {
-            if (isGenerating) return;
-
-            const input = document.getElementById('userInput');
-            const text = input.value.trim();
-            if (!text && !attachedImage) return;
-
-            const selfHarmKeywords = ['hurt myself', 'suicide', 'kill myself', 'end my life', 'want to die', 'self harm',
-                'cutting myself', 'hurt self', 'hurt me'
-            ];
-            const lowerText = text.toLowerCase();
-            const isSelfHarm = selfHarmKeywords.some(kw => lowerText.includes(kw));
-
-            // General safety check (non-image) remains.
-            if (!isPromptSafe(text) || isSelfHarm) {
-                input.value = '';
-                input.style.height = 'auto';
-
-                let chat = chats.find(c => c.id === currentChatId);
-                if (!chat) {
-                    startNewChat();
-                    chat = chats.find(c => c.id === currentChatId);
-                }
-
-                if (chat.messages.length === 0 || chat.title === 'New Conversation') {
-                    chat.title = text.length > 28 ? text.substring(0, 28) + '...' : text;
-                    saveChats();
-                    renderChatHistory();
-                }
-
-                chat.messages.push({ role: 'user', content: text, feedback: null });
-
-                const refusalResponse = isSelfHarm ?
-                    "I hear how much pain you're going through right now, and your life truly matters. Please know you don't have to carry this alone. If you are having thoughts of hurting yourself, please reach out for support immediately:\n\n- **Call or text 988** to reach the Suicide & Crisis Lifeline (free, confidential, and available 24/7 in the US and Canada).\n- **Text HOME to 741741** to connect with the Crisis Text Line.\n- **Call 911** or go to the nearest emergency room if you are in immediate danger.\n\nPlease talk to a trusted adult, professional, or call one of these resources right away." :
-                    "Your request can not be generated";
-
-                chat.messages.push({ role: 'assistant', content: refusalResponse, feedback: null });
-                saveChats();
-                renderActiveChat();
-                triggerNotification();
-                return;
+        function handleKeydown(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                document.getElementById('chatForm').requestSubmit();
             }
-
-            // No image safety check; proceed even for image generation.
-
-            if (text.toLowerCase().includes('remember')) {
-                if (!globalMemory.includes(text)) {
-                    globalMemory.push(text);
-                    localStorage.setItem('parasite_ai_global_memory', JSON.stringify(globalMemory));
-                }
-            }
-
-            const apiKey = localStorage.getItem('openrouter_api_key');
-            if (!apiKey && !isSelfHarm && !imageGenMode) {
-                openApiKeyModal();
-                return;
-            }
-
-            input.value = '';
-            input.style.height = 'auto';
-
-            const currentImg = attachedImage;
-            attachedImage = null;
-            renderAttachmentPreview();
-            input.disabled = false;
-            input.placeholder = imageGenMode ? 'Describe your image in rich detail...' :
-                'Type your message here or describe an image...';
-
-            let chat;
-            chat = chats.find(c => c.id === currentChatId);
-            if (!chat) {
-                startNewChat();
-                chat = chats.find(c => c.id === currentChatId);
-            }
-
-            if (chat.messages.length === 0 || chat.title === 'New Conversation') {
-                const titleBase = text || (currentImg ? 'Image Analysis' : 'New Conversation');
-                chat.title = titleBase.length > 28 ? titleBase.substring(0, 28) + '...' : titleBase;
-                saveChats();
-                renderChatHistory();
-            }
-
-            const userMsgObj = {
-                role: 'user',
-                content: text || (currentImg ? 'Analyze this attached image.' : ''),
-                feedback: null
-            };
-            if (currentImg) {
-                userMsgObj.image = currentImg.url;
-            }
-
-            chat.messages.push(userMsgObj);
-            saveChats();
-            renderChatHistory();
-
-            appendMessageNode('user', userMsgObj.content, false, chat.messages.length - 1, null, userMsgObj.image || null);
-
-            if (isSelfHarm) {
-                const crisisResponse =
-                    "I hear how much pain you're going through right now, and your life truly matters. Please know you don't have to carry this alone. If you are having thoughts of hurting yourself, please reach out for support immediately:\n\n- **Call or text 988** to reach the Suicide & Crisis Lifeline (free, confidential, and available 24/7 in the US and Canada).\n- **Text HOME to 741741** to connect with the Crisis Text Line.\n- **Call 911** or go to the nearest emergency room if you are in immediate danger.\n\nPlease talk to a trusted adult, professional, or call one of these resources right away.";
-                chat.messages.push({ role: 'assistant', content: crisisResponse, feedback: null });
-                saveChats();
-                appendMessageNode('assistant', crisisResponse, true, chat.messages.length - 1, null, null);
-                triggerNotification();
-                return;
-            }
-
-            setGeneratingState(true);
-
-            if (imageGenMode) {
-                await executeAdvancedImageGeneration(text || 'A beautiful photographic masterpiece');
-            } else {
-                await executeAIResponse();
-            }
-        }
-
-        // ---- ADVANCED IMAGE GENERATION (filter removed) ----
-        async function executeAdvancedImageGeneration(promptText) {
-            let chat = chats.find(c => c.id === currentChatId);
-            if (!chat) {
-                setGeneratingState(false);
-                return;
-            }
-
-            const modelName = currentImageModel || 'gpt-image-2';
-            const ratioMap = {
-                '1:1': { w: 1, h: 1 },
-                '16:9': { w: 16, h: 9 },
-                '9:16': { w: 9, h: 16 }
-            };
-            const ratio = ratioMap[currentAspectRatio] || ratioMap['1:1'];
-            const negativePrompt = document.getElementById('negativePromptInput')?.value.trim() || '';
-            let enhancedPrompt = promptText;
-            if (negativePrompt) enhancedPrompt += ` Avoid: ${negativePrompt}`;
-
-            const modelDisplayTitles = {
-                'gpt-image-2': 'Puter • GPT Image 2',
-                'gemini-3-pro-image': 'Puter • Gemini 3 Pro Image',
-                'grok-imagine-image': 'Puter • Grok Imagine Image'
-            };
-            const modelDisplayTitle = modelDisplayTitles[modelName] || 'Puter Image Generator';
-            const messageId = appendBlurredLoadingMessage(modelDisplayTitle, promptText, null);
-            document.getElementById('statusDot').className = 'w-2 h-2 rounded-full bg-purple-500 transition-colors';
-
-            try {
-                if (typeof puter === 'undefined' || !puter.ai || !puter.ai.txt2img) {
-                    throw new Error('Puter.js did not load. Check your internet connection and reload the page.');
-                }
-
-                currentAbortController = new AbortController();
-                const progressText = document.getElementById(`progressText_${messageId}`);
-                const progressBar = document.getElementById(`progressBar_${messageId}`);
-                if (progressText) progressText.innerText = 'Generating...';
-                if (progressBar) progressBar.style.width = '35%';
-
-                const options = {
-                    model: modelName,
-                    ratio: ratio
-                };
-                if (modelName === 'gemini-3-pro-image') {
-                    options.provider = 'gemini';
-                    options.quality = '1K';
-                } else if (modelName === 'grok-imagine-image') {
-                    options.provider = 'xai';
-                    options.quality = '1k';
-                } else {
-                    options.provider = 'openai-image-generation';
-                    options.quality = 'high';
-                }
-
-                const image = await puter.ai.txt2img(enhancedPrompt, options);
-                if (!image || !image.src) throw new Error('Puter returned no image.');
-                if (currentAbortController.signal.aborted) throw new Error('Generation aborted by user.');
-
-                if (progressBar) progressBar.style.width = '100%';
-                if (progressText) progressText.innerText = '100%';
-
-                const imageUrl = image.src;
-                const messageContent = `[IMAGE:${imageUrl}:${promptText}]`;
-                document.getElementById('statusDot').className = 'w-2 h-2 rounded-full bg-neutral-600 transition-colors';
-
-                chat.messages.push({ role: 'assistant', content: messageContent, feedback: null });
-                saveChats();
-                finalizeBlurredMessage(messageId, imageUrl, promptText, chat.messages.length - 1);
-                triggerNotification();
-            } catch (error) {
-                document.getElementById('statusDot').className = 'w-2 h-2 rounded-full bg-neutral-600 transition-colors';
-                document.getElementById(messageId)?.remove();
-                if (error.message !== 'Generation aborted by user.') {
-                    const errorMsg = `Error generating image with Puter: ${error.message || 'Unknown error'}`;
-                    chat.messages.push({ role: 'assistant', content: errorMsg, feedback: null });
-                    saveChats();
-                    appendMessageNode('assistant', errorMsg, false, chat.messages.length - 1, null);
-                }
-            } finally {
-                currentAbortController = null;
-                setGeneratingState(false);
-            }
-        }
-
-        function appendBlurredLoadingMessage(modelTitle, promptText, imageUrl) {
-            const messageList = document.getElementById('messageList');
-            document.getElementById('introScreen').classList.add('hidden');
-            messageList.classList.remove('hidden');
-
-            const messageId = 'img_msg_' + Date.now();
-            const wrapper = document.createElement('div');
-            wrapper.id = messageId;
-            wrapper.className = 'flex space-x-3 justify-start w-full max-w-xl';
-
-            const avatar = document.createElement('div');
-            avatar.className = 'w-2.5 h-2.5 rounded-full bg-purple-500 shrink-0 mt-2';
-            wrapper.appendChild(avatar);
-
-            const containerDiv = document.createElement('div');
-            containerDiv.className = 'w-full';
-
-            const bubble = document.createElement('div');
-            bubble.className =
-                'rounded-2xl p-4 text-xs bg-neutral-950 border border-neutral-800 text-neutral-200 space-y-3 shadow-xl';
-
-            bubble.innerHTML = `
-                    <div class="flex items-center justify-between border-b border-neutral-900 pb-2">
-                        <div class="flex items-center space-x-2">
-                            <span class="font-bold text-white tracking-wide">Generating Image</span>
-                        </div>
-                        <span class="text-[10px] text-purple-400 font-mono">${escapeHtml(modelTitle)}</span>
-                    </div>
-                    <div class="space-y-2">
-                        <div class="text-neutral-400 truncate">Prompt: <span class="italic text-white">"${escapeHtml(promptText)}"</span></div>
-
-                        <div class="relative rounded-xl overflow-hidden border border-neutral-800 bg-neutral-900 aspect-square max-w-sm mx-auto shadow-2xl">
-                            <img src="${imageUrl}" alt="Generating preview" class="w-full h-full object-cover filter blur-xl opacity-50" />
-                            <div class="absolute inset-0 bg-black/60 flex flex-col items-center justify-center p-6 text-center space-y-3">
-                                <div class="w-full bg-neutral-900 h-2 rounded-full overflow-hidden border border-neutral-800 max-w-[220px]">
-                                    <div id="progressBar_${messageId}" class="bg-purple-600 h-full w-[10%] transition-all duration-300"></div>
-                                </div>
-                                <p class="text-xs text-neutral-300 font-medium">Creating your image (<span id="progressText_${messageId}">10%</span>)...</p>
-                            </div>
-                        </div>
-                    </div>
-                `;
-
-            containerDiv.appendChild(bubble);
-            wrapper.appendChild(containerDiv);
-            messageList.appendChild(wrapper);
-            scrollToBottom();
-            return messageId;
-        }
-
-        function finalizeBlurredMessage(messageId, imageUrl, promptText, messageIndex) {
-            const wrapper = document.getElementById(messageId);
-            if (!wrapper) return;
-
-            const containerDiv = wrapper.querySelector('div.w-full');
-            if (!containerDiv) return;
-
-            containerDiv.innerHTML = `
-                    <div class="rounded-2xl p-4 text-xs bg-neutral-950 border border-neutral-800 text-neutral-200 space-y-3 shadow-xl">
-                        <p class="text-xs text-neutral-400">Generated image for: <span class="italic text-white">"${escapeHtml(promptText)}"</span></p>
-                        <div class="rounded-xl overflow-hidden border border-neutral-800 bg-neutral-900 aspect-square max-w-sm mx-auto shadow-2xl transition-all duration-700">
-                            <img src="${imageUrl}" alt="${escapeHtml(promptText)}" class="w-full h-full object-cover animate-fade-in" onerror="this.onerror=null;this.src='https://placehold.co/600x600/111/fff?text=Image+Load+Failed';" />
-                        </div>
-                        <div class="flex items-center space-x-2 pt-1">
-                            <button onclick="openImageEditUI(this.dataset.url, this.dataset.prompt)" data-url="${escapeHtml(imageUrl)}" data-prompt="${escapeHtml(promptText)}" class="bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-200 font-medium px-3 py-1.5 rounded-lg text-xs flex items-center space-x-1.5 transition-colors cursor-pointer"><i class="fa-solid fa-pen-to-square text-[10px]"></i><span>Edit</span></button>
-                            <button onclick="downloadGeneratedImage(this)" data-url="${escapeHtml(imageUrl)}" data-prompt="${escapeHtml(promptText)}" class="bg-white hover:bg-neutral-200 text-black font-medium px-3 py-1.5 rounded-lg text-xs flex items-center space-x-1.5 transition-colors cursor-pointer"><i class="fa-solid fa-download text-[10px]"></i><span>Download PNG</span></button>
-                        </div>
-                    </div>
-                `;
-
-            appendMessageActions(containerDiv, 'assistant', `[IMAGE:${imageUrl}:${promptText}]`, messageIndex, false, null);
-            scrollToBottom();
-        }
-
-        let imageBeingEdited = null;
-        let imageBeingEditedPrompt = '';
-        let imageEditPreserve = true;
-
-        function openImageEditUI(imageUrl, originalPrompt = '') {
-            imageBeingEdited = imageUrl;
-            imageBeingEditedPrompt = originalPrompt || '';
-            imageEditPreserve = true;
-
-            const modal = document.getElementById('imageEditModal');
-            const preview = document.getElementById('editImagePreview');
-            const input = document.getElementById('imageEditPrompt');
-            const toggle = document.getElementById('imageEditPreserveToggle');
-
-            if (preview) preview.src = imageUrl;
-            if (input) {
-                input.value = '';
-                input.focus();
-            }
-            updateImageEditPreserveUI();
-            if (modal) {
-                modal.classList.remove('hidden');
-                modal.classList.add('flex');
-            }
-        }
-
-        function closeImageEditUI() {
-            imageBeingEdited = null;
-            imageBeingEditedPrompt = '';
-            const modal = document.getElementById('imageEditModal');
-            if (modal) {
-                modal.classList.add('hidden');
-                modal.classList.remove('flex');
-            }
-        }
-
-        function updateImageEditPreserveUI() {
-            const toggle = document.getElementById('imageEditPreserveToggle');
-            if (!toggle) return;
-            const knob = toggle.querySelector('span');
-            toggle.setAttribute('aria-pressed', String(imageEditPreserve));
-            toggle.classList.toggle('bg-white', imageEditPreserve);
-            toggle.classList.toggle('bg-neutral-800', !imageEditPreserve);
-            if (knob) {
-                knob.classList.toggle('bg-black', imageEditPreserve);
-                knob.classList.toggle('bg-neutral-500', !imageEditPreserve);
-                knob.classList.toggle('translate-x-5', imageEditPreserve);
-                knob.classList.toggle('translate-x-0', !imageEditPreserve);
-            }
-        }
-
-        function insertImageEditPreset(text) {
-            const input = document.getElementById('imageEditPrompt');
-            if (!input) return;
-            input.value = input.value.trim() ? input.value.trim() + ' ' + text : text;
-            input.focus();
-        }
-
-        async function submitImageEdit() {
-            if (!imageBeingEdited) return;
-            const input = document.getElementById('imageEditPrompt');
-            const btn = document.getElementById('applyImageEditBtn');
-            const userEdit = input?.value.trim() || '';
-            if (!userEdit) { input?.focus(); return; }
-
-            const sourceUrl = imageBeingEdited;
-            const preserve = imageEditPreserve;
-            const editPrompt = preserve
-                ? userEdit + ' Preserve the original subject, identity, pose, composition, camera framing, and all details not explicitly changed.'
-                : userEdit;
-
-            if (btn) {
-                btn.disabled = true;
-                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-[10px]"></i><span>Generating...</span>';
-            }
-
-            let chat = chats.find(c => c.id === currentChatId);
-            if (!chat) { startNewChat(); chat = chats.find(c => c.id === currentChatId); }
-            if (!chat) {
-                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles text-[10px]"></i><span>Generate Edit</span>'; }
-                return;
-            }
-
-            closeImageEditUI();
-            setGeneratingState(true);
-            document.getElementById('statusDot').className = 'w-2 h-2 rounded-full bg-purple-500 transition-colors';
-            const messageId = appendBlurredLoadingMessage('Puter • Image Edit', editPrompt, null);
-
-            try {
-                if (typeof puter === 'undefined' || !puter.ai || !puter.ai.txt2img) {
-                    throw new Error('Puter.js did not load. Reload the page and try again.');
-                }
-                currentAbortController = new AbortController();
-                const ratioMap = { '1:1': { w: 1, h: 1 }, '16:9': { w: 16, h: 9 }, '9:16': { w: 9, h: 16 } };
-                const options = {
-                    model: currentImageModel || 'gpt-image-2',
-                    ratio: ratioMap[currentAspectRatio] || ratioMap['1:1'],
-                    input_image: sourceUrl
-                };
-                if (options.model === 'gemini-3-pro-image') { options.provider = 'gemini'; options.quality = '1K'; }
-                else if (options.model === 'grok-imagine-image') { options.provider = 'xai'; options.quality = '1k'; }
-                else { options.provider = 'openai-image-generation'; options.quality = 'high'; }
-
-                const image = await puter.ai.txt2img(editPrompt, options);
-                if (!image || !image.src) throw new Error('Puter returned no edited image.');
-                if (currentAbortController.signal.aborted) throw new Error('Generation aborted by user.');
-
-                const imageUrl = image.src;
-                const messageContent = `[IMAGE:${imageUrl}:${editPrompt}]`;
-                chat.messages.push({ role: 'assistant', content: messageContent, feedback: null });
-                saveChats();
-                finalizeBlurredMessage(messageId, imageUrl, editPrompt, chat.messages.length - 1);
-                triggerNotification();
-            } catch (error) {
-                document.getElementById(messageId)?.remove();
-                if (error.message !== 'Generation aborted by user.') {
-                    const errorMsg = 'Error editing image with Puter: ' + (error.message || 'Unknown error');
-                    chat.messages.push({ role: 'assistant', content: errorMsg, feedback: null });
-                    saveChats();
-                    appendMessageNode('assistant', errorMsg, false, chat.messages.length - 1, null, null);
-                }
-            } finally {
-                currentAbortController = null;
-                setGeneratingState(false);
-                document.getElementById('statusDot').className = 'w-2 h-2 rounded-full bg-neutral-600 transition-colors';
-                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles text-[10px]"></i><span>Generate Edit</span>'; }
-            }
-        }
-
-        // ---- AI RESPONSE ----
-        async function executeAIResponse() {
-            let chat = chats.find(c => c.id === currentChatId);
-            if (!chat) {
-                setGeneratingState(false);
-                return;
-            }
-
-            const loadingId = appendLoadingMessage();
-            document.getElementById('statusDot').className = 'w-2 h-2 rounded-full bg-orange-500 transition-colors';
-
-            try {
-                let currentSystemPrompt = baseSystemPrompt;
-
-                if (globalMemory.length > 0) {
-                    currentSystemPrompt += ` [GLOBAL USER MEMORIES & PREFERENCES ACROSS ALL CHATS:\n- ${globalMemory.join('\n- ')}\n]`;
-                }
-
-                if (userFeedback.liked.length > 0 || userFeedback.disliked.length > 0) {
-                    currentSystemPrompt += ` [USER ADAPTIVE PREFERENCES (Private to this user):\n`;
-                    if (userFeedback.liked.length > 0) {
-                        currentSystemPrompt +=
-                            `- Style/traits the user THUMBED UP (DO MORE OF THIS): ${userFeedback.liked.slice(-5).join(' | ')}\n`;
-                    }
-                    if (userFeedback.disliked.length > 0) {
-                        currentSystemPrompt +=
-                            `- Style/traits the user THUMBED DOWN (AVOID COMPLETELY): ${userFeedback.disliked.slice(-5).join(' | ')}\n`;
-                    }
-                    currentSystemPrompt += `]`;
-                }
-
-                if (webSearchMode) {
-                    currentSystemPrompt +=
-                        " [WEB SEARCH ACTIVE: Thoroughly search the web for up-to-date references, data, and answers to ensure absolute accuracy.]";
-                }
-
-                const apiMessages = [
-                    { role: 'system', content: currentSystemPrompt },
-                    ...chat.messages.map(m => {
-                        if (m.image) {
-                            return {
-                                role: m.role,
-                                content: [
-                                    { type: "text", text: m.content },
-                                    { type: "image_url", image_url: { url: m.image } }
-                                ]
-                            };
-                        }
-                        return { role: m.role, content: m.content };
-                    })
-                ];
-
-                const payload = {
-                    model: "openrouter/free",
-                    messages: apiMessages
-                };
-
-                if (webSearchMode) {
-                    payload.plugins = [{ id: "web" }];
-                }
-
-                const apiKey = localStorage.getItem('openrouter_api_key');
-                currentAbortController = new AbortController();
-
-                const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${apiKey}`,
-                        'HTTP-Referer': window.location.origin,
-                        'X-Title': 'Parasite.AI',
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(payload),
-                    signal: currentAbortController.signal
-                });
-
-                if (!response.ok) {
-                    const errData = await response.json();
-                    throw new Error(errData.error?.message || `API error: ${response.status}`);
-                }
-
-                const result = await response.json();
-                const aiResponse = result.choices?.[0]?.message?.content || "No response generated.";
-
-                removeLoadingMessage(loadingId);
-                document.getElementById('statusDot').className = 'w-2 h-2 rounded-full bg-neutral-600 transition-colors';
-                chat.messages.push({ role: 'assistant', content: aiResponse, feedback: null });
-                saveChats();
-
-                appendMessageNode('assistant', aiResponse, true, chat.messages.length - 1, null, null);
-                triggerNotification();
-
-            } catch (error) {
-                removeLoadingMessage(loadingId);
-                document.getElementById('statusDot').className = 'w-2 h-2 rounded-full bg-neutral-600 transition-colors';
-                if (error.name !== 'AbortError' && error.message !== 'Generation aborted by user.') {
-                    const errorMsg = `Error communicating with OpenRouter API: ${error.message}`;
-                    chat.messages.push({ role: 'assistant', content: errorMsg, feedback: null });
-                    saveChats();
-                    appendMessageNode('assistant', errorMsg, false, chat.messages.length - 1, null, null);
-                }
-            } finally {
-                currentAbortController = null;
-                setGeneratingState(false);
-            }
-        }
-
-        // ---- FORMAT MARKDOWN ----
-        function formatMarkdownContent(content, imageUrl = null) {
-            let html = '';
-            if (imageUrl) {
-                html += `
-                        <div class="mb-2 rounded-xl overflow-hidden border border-neutral-800 bg-neutral-900 max-w-xs">
-                            <img src="${escapeHtml(imageUrl)}" alt="User Attachment" class="w-full h-auto object-cover max-h-48" />
-                        </div>
-                    `;
-            }
-            if (content === "Your request can not be generated") {
-                return html + `<span class="text-red-400 font-medium">Your request can not be generated</span>`;
-            }
-            if (content.startsWith('[IMAGE:') && content.endsWith(']')) {
-                const parts = content.slice(1, -1).split(':');
-                const url = parts.slice(1, -1).join(':');
-                const prompt = parts[parts.length - 1];
-                return html + `
-                        <div class="space-y-3">
-                            <p class="text-xs text-neutral-400">Generated image for: <span class="italic text-white">"${escapeHtml(prompt)}"</span></p>
-                            <div class="rounded-xl overflow-hidden border border-neutral-800 bg-neutral-900">
-                                <img src="${url}" alt="${escapeHtml(prompt)}" class="w-full h-auto object-cover max-h-96" onerror="this.onerror=null;this.src='https://placehold.co/600x600/111/fff?text=Image+Load+Failed';" />
-                            </div>
-                            <div class="flex items-center space-x-2 pt-1">
-                                <button onclick="downloadGeneratedImage(this)" data-url="${escapeHtml(url)}" data-prompt="${escapeHtml(prompt)}" class="bg-white hover:bg-neutral-200 text-black font-medium px-3 py-1.5 rounded-lg text-xs flex items-center space-x-1.5 transition-colors cursor-pointer">
-                                    <i class="fa-solid fa-download text-[10px]"></i>
-                                    <span>Download PNG</span>
-                                </button>
-                            </div>
-                        </div>
-                    `;
-            }
-
-            let escaped = escapeHtml(content);
-
-            escaped = escaped.replace(/```([\s\S]*?)```/g,
-                '<pre class="bg-neutral-900 border border-neutral-800 p-3 rounded-lg my-2 overflow-x-auto text-xs text-neutral-200 font-mono"><code>$1</code></pre>'
-                );
-            escaped = escaped.replace(/`([^`]+)`/g,
-                '<code class="bg-neutral-900 px-1 py-0.5 rounded text-xs text-neutral-200 font-mono">$1</code>');
-            escaped = escaped.replace(/^# (.*?)$/gm,
-                '<h1 class="text-lg font-bold text-white my-2.5 tracking-tight">$1</h1>');
-            escaped = escaped.replace(/^## (.*?)$/gm,
-                '<h2 class="text-base font-bold text-white my-2 tracking-tight">$2</h2>');
-            escaped = escaped.replace(/^### (.*?)$/gm,
-                '<h3 class="text-sm font-bold text-white my-1.5 tracking-tight">$1</h3>');
-            escaped = escaped.replace(/^\* (.*?)$/gm, '<li class="ml-4 list-disc text-neutral-200">$1</li>');
-            escaped = escaped.replace(/^- (.*?)$/gm, '<li class="ml-4 list-disc text-neutral-200">$1</li>');
-            escaped = escaped.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-white">$1</strong>');
-            escaped = escaped.replace(/\*(.*?)\*/g, '<em class="italic text-neutral-200">$1</em>');
-            escaped = escaped.replace(/_(.*?)_/g, '<em class="italic text-neutral-200">$1</em>');
-            escaped = escaped.replace(/\n/g, '<br>');
-
-            return html + escaped;
-        }
-
-        async function downloadImage(url, prompt) {
-            try {
-                const response = await fetch(url);
-                const blob = await response.blob();
-                const blobUrl = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = blobUrl;
-                a.download = (prompt ? prompt.substring(0, 30).replace(/[^a-z0-9]/gi, '_').toLowerCase() :
-                    'generated_image') + '.png';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                window.URL.revokeObjectURL(blobUrl);
-            } catch (err) {
-                window.open(url, '_blank');
-            }
-        }
-
-        async function downloadGeneratedImage(btn) {
-            const url = btn.getAttribute('data-url');
-            const prompt = btn.getAttribute('data-prompt');
-            await downloadImage(url, prompt);
-        }
-
-        function escapeHtml(text) {
-            const map = {
-                '&': '&amp;',
-                '<': '&lt;',
-                '>': '&gt;',
-                '"': '&quot;',
-                "'": '&#039;'
-            };
-            return text.replace(/[&<>"']/g, function(m) { return map[m]; });
-        }
-
-        // ---- APPEND MESSAGE ----
-        function appendMessageNode(role, content, animate = false, messageIndex = null, initialFeedback = null,
-        imageUrl = null) {
-            const messageList = document.getElementById('messageList');
-            const isUser = role === 'user';
-
-            const wrapper = document.createElement('div');
-            wrapper.className = `flex space-x-3 group/msg ${isUser ? 'justify-end' : 'justify-start'}`;
-
-            if (!isUser) {
-                const avatar = document.createElement('div');
-                avatar.className = 'w-2.5 h-2.5 rounded-full bg-white shrink-0 mt-2';
-                wrapper.appendChild(avatar);
-            }
-
-            const containerDiv = document.createElement('div');
-            containerDiv.className = `max-w-[85%] ${isUser ? 'flex flex-col items-end' : 'w-full'}`;
-
-            const bubble = document.createElement('div');
-            bubble.className =
-                `rounded-2xl px-4 py-3 text-sm leading-relaxed ${isUser ? 'bg-neutral-800 text-white rounded-br-xs' : 'bg-neutral-950 border border-neutral-800 text-neutral-200 rounded-bl-xs w-full'}`;
-
-            containerDiv.appendChild(bubble);
-            wrapper.appendChild(containerDiv);
-            messageList.appendChild(wrapper);
-
-            if (isUser || !animate || content.startsWith('[IMAGE:')) {
-                bubble.innerHTML = formatMarkdownContent(content, imageUrl);
-                appendMessageActions(containerDiv, role, content, messageIndex, isUser, initialFeedback);
-                scrollToBottom();
-            } else {
-                let charIndex = 0;
-                const speed = 8;
-                const chunkSize = 20;
-
-                function typeNextChunk() {
-                    if (!isGenerating && currentAbortController === null) {
-                        bubble.innerHTML = formatMarkdownContent(content, imageUrl);
-                        appendMessageActions(containerDiv, role, content, messageIndex, false, initialFeedback);
-                        scrollToBottom();
-                        return;
-                    }
-
-                    charIndex = Math.min(content.length, charIndex + chunkSize);
-                    const currentSubstring = content.substring(0, charIndex);
-                    bubble.innerHTML = formatMarkdownContent(currentSubstring, imageUrl);
-                    scrollToBottom();
-
-                    if (charIndex < content.length) {
-                        currentTypewriterTimeout = setTimeout(typeNextChunk, speed);
-                    } else {
-                        bubble.innerHTML = formatMarkdownContent(content, imageUrl);
-                        appendMessageActions(containerDiv, role, content, messageIndex, false, initialFeedback);
-                        scrollToBottom();
-                    }
-                }
-                typeNextChunk();
-            }
-        }
-
-        function appendMessageActions(containerDiv, role, content, messageIndex, isUser, initialFeedback) {
-            if (containerDiv.querySelector('.msg-actions')) return;
-
-            const actionsBar = document.createElement('div');
-            actionsBar.className =
-                `msg-actions flex items-center space-x-2 mt-1.5 text-xs text-neutral-400 ${isUser ? 'justify-end' : 'justify-start'}`;
-
-            const copyBtn = document.createElement('button');
-            copyBtn.className =
-                'flex items-center space-x-1 hover:text-white transition-colors bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-800 px-2 py-1 rounded-md cursor-pointer';
-            copyBtn.innerHTML = '<i class="fa-solid fa-copy text-[10px]"></i><span>Copy</span>';
-            copyBtn.onclick = () => copyText(content, copyBtn);
-            actionsBar.appendChild(copyBtn);
-
-            if (isUser && messageIndex !== null) {
-                const editBtn = document.createElement('button');
-                editBtn.className =
-                    'flex items-center space-x-1 hover:text-white transition-colors bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-800 px-2 py-1 rounded-md cursor-pointer';
-                editBtn.innerHTML = '<i class="fa-solid fa-pen text-[10px]"></i><span>Edit</span>';
-                editBtn.onclick = () => startEditMessage(messageIndex);
-                actionsBar.appendChild(editBtn);
-            }
-
-            if (!isUser && messageIndex !== null) {
-                const retryBtn = document.createElement('button');
-                retryBtn.className =
-                    'flex items-center space-x-1 hover:text-white transition-colors bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-800 px-2 py-1 rounded-md cursor-pointer';
-                retryBtn.innerHTML = '<i class="fa-solid fa-rotate-right text-[10px]"></i><span>Retry</span>';
-                retryBtn.onclick = () => retryMessage(messageIndex);
-                actionsBar.appendChild(retryBtn);
-
-                const thumbUpBtn = document.createElement('button');
-                const isLiked = initialFeedback === 'up';
-                thumbUpBtn.className =
-                    `flex items-center space-x-1 transition-colors bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-800 px-2 py-1 rounded-md cursor-pointer ${isLiked ? 'text-green-400 border-green-800/60' : 'hover:text-white'}`;
-                thumbUpBtn.innerHTML =
-                    `<i class="${isLiked ? 'fa-solid' : 'fa-regular'} fa-thumbs-up text-[10px]"></i><span>Helpful</span>`;
-                thumbUpBtn.onclick = () => handleFeedback(messageIndex, 'up', thumbUpBtn, thumbDownBtn, content);
-
-                const thumbDownBtn = document.createElement('button');
-                const isDisliked = initialFeedback === 'down';
-                thumbDownBtn.className =
-                    `flex items-center space-x-1 transition-colors bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-800 px-2 py-1 rounded-md cursor-pointer ${isDisliked ? 'text-red-400 border-red-800/60' : 'hover:text-white'}`;
-                thumbDownBtn.innerHTML =
-                    `<i class="${isDisliked ? 'fa-solid' : 'fa-regular'} fa-thumbs-down text-[10px]"></i><span>Avoid</span>`;
-                thumbDownBtn.onclick = () => handleFeedback(messageIndex, 'down', thumbUpBtn, thumbDownBtn, content);
-
-                actionsBar.appendChild(thumbUpBtn);
-                actionsBar.appendChild(thumbDownBtn);
-            }
-
-            containerDiv.appendChild(actionsBar);
-        }
-
-        function handleFeedback(messageIndex, type, upBtn, downBtn, content) {
-            let chat = chats.find(c => c.id === currentChatId);
-            if (!chat || !chat.messages[messageIndex]) return;
-
-            const currentFeedback = chat.messages[messageIndex].feedback;
-            const snippet = content.length > 120 ? content.substring(0, 120) + '...' : content;
-
-            if (currentFeedback === type) {
-                chat.messages[messageIndex].feedback = null;
-                if (type === 'up') {
-                    userFeedback.liked = userFeedback.liked.filter(item => item !== snippet);
-                } else {
-                    userFeedback.disliked = userFeedback.disliked.filter(item => item !== snippet);
-                }
-            } else {
-                chat.messages[messageIndex].feedback = type;
-                if (type === 'up') {
-                    if (!userFeedback.liked.includes(snippet)) userFeedback.liked.push(snippet);
-                    userFeedback.disliked = userFeedback.disliked.filter(item => item !== snippet);
-                } else {
-                    if (!userFeedback.disliked.includes(snippet)) userFeedback.disliked.push(snippet);
-                    userFeedback.liked = userFeedback.liked.filter(item => item !== snippet);
-                }
-            }
-
-            saveChats();
-            localStorage.setItem('parasite_ai_feedback', JSON.stringify(userFeedback));
-
-            const updatedFeedback = chat.messages[messageIndex].feedback;
-            upBtn.className =
-                `flex items-center space-x-1 transition-colors bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-800 px-2 py-1 rounded-md cursor-pointer ${updatedFeedback === 'up' ? 'text-green-400 border-green-800/60' : 'hover:text-white'}`;
-            upBtn.querySelector('i').className =
-                `${updatedFeedback === 'up' ? 'fa-solid' : 'fa-regular'} fa-thumbs-up text-[10px]`;
-
-            downBtn.className =
-                `flex items-center space-x-1 transition-colors bg-neutral-900/80 hover:bg-neutral-800 border border-neutral-800 px-2 py-1 rounded-md cursor-pointer ${updatedFeedback === 'down' ? 'text-red-400 border-red-800/60' : 'hover:text-white'}`;
-            downBtn.querySelector('i').className =
-                `${updatedFeedback === 'down' ? 'fa-solid' : 'fa-regular'} fa-thumbs-down text-[10px]`;
-        }
-
-        function copyText(text, btn) {
-            const cleanText = text.startsWith('[IMAGE:') ? 'Image URL: ' + text.split(':')[1] : text;
-            const textArea = document.createElement("textarea");
-            textArea.value = cleanText;
-            document.body.appendChild(textArea);
-            textArea.select();
-            try {
-                document.execCommand('copy');
-                const origHTML = btn.innerHTML;
-                btn.innerHTML = '<i class="fa-solid fa-check text-[10px]"></i><span>Copied</span>';
-                setTimeout(() => { btn.innerHTML = origHTML; }, 2000);
-            } catch (err) {
-                console.error('Failed to copy', err);
-            }
-            document.body.removeChild(textArea);
-        }
-
-        function startEditMessage(messageIndex) {
-            let chat = chats.find(c => c.id === currentChatId);
-            if (!chat || !chat.messages[messageIndex]) return;
-
-            const originalContent = chat.messages[messageIndex].content;
-            renderActiveChat();
-
-            const messageList = document.getElementById('messageList');
-            const msgWrappers = messageList.children;
-            if (msgWrappers[messageIndex]) {
-                const bubble = msgWrappers[messageIndex].querySelector('.rounded-2xl');
-                if (bubble) {
-                    bubble.className = 'rounded-2xl p-3 text-sm bg-neutral-900 border border-neutral-700 w-full';
-                    bubble.innerHTML = `
-                            <textarea id="editInput_${messageIndex}" class="w-full bg-neutral-950 text-white text-sm p-2 rounded-lg border border-neutral-800 focus:outline-none focus:border-white resize-none" rows="2">${escapeHtml(originalContent)}</textarea>
-                            <div class="flex justify-end space-x-2 mt-2">
-                                <button onclick="renderActiveChat()" class="px-3 py-1 bg-neutral-800 hover:bg-neutral-700 rounded text-xs text-neutral-300 cursor-pointer">Cancel</button>
-                                <button onclick="saveEditMessage(${messageIndex})" class="px-3 py-1 bg-white hover:bg-neutral-200 text-black font-medium rounded text-xs cursor-pointer">Save & Submit</button>
-                            </div>
-                        `;
-                    const ta = document.getElementById(`editInput_${messageIndex}`);
-                    if (ta) {
-                        ta.focus();
-                        ta.setSelectionRange(ta.value.length, ta.value.length);
-                    }
-                }
-            }
-        }
-
-        function saveEditMessage(messageIndex) {
-            const ta = document.getElementById(`editInput_${messageIndex}`);
-            if (!ta) return;
-            const newContent = ta.value.trim();
-            if (!newContent) return;
-
-            let chat = chats.find(c => c.id === currentChatId);
-            if (!chat) return;
-
-            chat.messages = chat.messages.slice(0, messageIndex);
-            chat.messages.push({ role: 'user', content: newContent });
-            saveChats();
-            renderChatHistory();
-            renderActiveChat();
-
-            setGeneratingState(true);
-            if (imageGenMode) {
-                executeAdvancedImageGeneration(newContent);
-            } else {
-                executeAIResponse();
-            }
-        }
-
-        function retryMessage(messageIndex) {
-            let chat = chats.find(c => c.id === currentChatId);
-            if (!chat) return;
-
-            const userMsg = chat.messages[messageIndex - 1]?.content;
-            chat.messages = chat.messages.slice(0, messageIndex);
-            saveChats();
-            renderActiveChat();
-
-            setGeneratingState(true);
-            if (imageGenMode && userMsg) {
-                executeAdvancedImageGeneration(userMsg);
-            } else {
-                executeAIResponse();
-            }
-        }
-
-        function appendLoadingMessage(customText = 'Thinking...') {
-            const messageList = document.getElementById('messageList');
-            document.getElementById('introScreen').classList.add('hidden');
-            messageList.classList.remove('hidden');
-
-            const loadingId = 'loading_' + Date.now();
-            const wrapper = document.createElement('div');
-            wrapper.id = loadingId;
-            wrapper.className = 'flex space-x-3 justify-start';
-
-            const avatar = document.createElement('div');
-            avatar.className = 'w-2.5 h-2.5 rounded-full bg-white shrink-0 mt-2 animate-pulse';
-            wrapper.appendChild(avatar);
-
-            const bubble = document.createElement('div');
-            bubble.className =
-                'max-w-[85%] rounded-2xl px-4 py-3 text-sm bg-neutral-950 border border-neutral-800 text-neutral-300 rounded-bl-xs flex items-center space-x-3';
-
-            bubble.innerHTML = `
-                    <div class="relative flex items-center justify-center w-5 h-5">
-                        <div class="absolute w-full h-full rounded-full bg-white/20 animate-ping"></div>
-                        <div class="w-2.5 h-2.5 rounded-full bg-white"></div>
-                    </div>
-                    <span class="text-xs font-medium text-neutral-200 tracking-wide animate-pulse">${customText}</span>
-                `;
-
-            wrapper.appendChild(bubble);
-            messageList.appendChild(wrapper);
-            scrollToBottom();
-            return loadingId;
-        }
-
-        function removeLoadingMessage(loadingId) {
-            const el = document.getElementById(loadingId);
-            if (el) el.remove();
-        }
-
-        function scrollToBottom() {
-            const container = document.getElementById('chatContainer');
-            container.scrollTop = container.scrollHeight;
         }
 
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
+            const backdrop = document.getElementById('sidebarBackdrop');
             sidebar.classList.toggle('-translate-x-full');
+            backdrop.classList.toggle('hidden');
+        }
+
+        async function handleFormSubmit(e) {
+            e.preventDefault();
+            const inputEl = document.getElementById('userInput');
+            const text = inputEl.value.trim();
+            if (!text || isGenerating) return;
+
+            inputEl.value = '';
+            inputEl.style.height = 'auto';
+
+            // Check profanity / slurs / bullying
+            if (checkSlursOrBullying(text)) {
+                moderationData.warnings++;
+                moderationData.lastWarningTime = Date.now();
+                if (moderationData.warnings >= 5) {
+                    moderationData.bannedUntil = Date.now() + (48 * 60 * 60 * 1000);
+                    saveModerationState();
+                    checkBanStatus();
+                    return;
+                } else {
+                    saveModerationState();
+                    openCustomModal({
+                        title: 'Warning: Community Guidelines',
+                        message: `Your message contained flagged slurs, profanity, or abusive bullying language. Warning ${moderationData.warnings} of 5. Continued violations will result in a 48-hour ban.`,
+                        showInput: false,
+                        onConfirm: () => {}
+                    });
+                    return;
+                }
+            }
+
+            const cleanText = filterProfanity(text);
+
+            if (currentView === 'global') {
+                // LOCAL FIRST UI UPDATE FOR INSTANT RESPONSIVENESS
+                const tempMsg = {
+                    sender_id: myUserId,
+                    sender_name: myUserId,
+                    content: cleanText,
+                    created_at: Date.now(),
+                    reply_to: replyingTo
+                };
+                
+                if (!window.globalMessages) window.globalMessages = [];
+                window.globalMessages.push(tempMsg);
+                renderGlobalMessages();
+                cancelReply();
+
+                // SYNC TO FIREBASE SERVER
+                if (window.sendGlobalMessageToFirestore) {
+                    window.sendGlobalMessageToFirestore(tempMsg);
+                }
+                return;
+            }
+
+            // AI CHAT VIEW
+            const chat = chats.find(c => c.id === currentChatId);
+            if (!chat) return;
+
+            const userMsg = { role: 'user', content: cleanText };
+            chat.messages.push(userMsg);
+            
+            if (chat.messages.length === 1) {
+                chat.title = cleanText.length > 28 ? cleanText.substring(0, 28) + '...' : cleanText;
+                renderChatList();
+            }
+
+            saveState();
+            loadCurrentChat();
+
+            // Trigger AI Generation
+            isGenerating = true;
+            const typingIndicator = document.getElementById('typingIndicator');
+            const busyNotice = document.getElementById('busyServerNotice');
+            typingIndicator.classList.remove('hidden');
+            
+            busyServerTimer = setTimeout(() => {
+                busyNotice.classList.remove('hidden');
+            }, 3000);
+
+            const icon = document.getElementById('actionButtonIcon');
+            icon.className = "fa-solid fa-square text-xs";
+
+            try {
+                abortController = new AbortController();
+                const apiMessages = [
+                    { role: "system", content: API_CONFIG.systemPrompt },
+                    ...chat.messages.map(m => ({ role: m.role, content: m.content }))
+                ];
+
+                const response = await fetch(API_CONFIG.endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${API_CONFIG.apiKey}`,
+                        'HTTP-Referer': window.location.origin,
+                        'X-Title': 'Parasite A.I'
+                    },
+                    body: JSON.stringify({
+                        model: API_CONFIG.model,
+                        messages: apiMessages
+                    }),
+                    signal: abortController.signal
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Server returned status ${response.status}`);
+                }
+
+                const data = await response.json();
+                const replyContent = data.choices?.[0]?.message?.content || "I apologize, but I could not generate a response.";
+
+                chat.messages.push({ role: 'assistant', content: replyContent });
+                saveState();
+                loadCurrentChat();
+
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    chat.messages.push({ role: 'assistant', content: "⚠️ Connection error or server busy. Please try again." });
+                    saveState();
+                    loadCurrentChat();
+                }
+            } finally {
+                clearTimeout(busyServerTimer);
+                busyNotice.classList.add('hidden');
+                typingIndicator.classList.add('hidden');
+                isGenerating = false;
+                icon.className = "fa-solid fa-arrow-up text-xs";
+                abortController = null;
+            }
         }
     </script>
 </body>
