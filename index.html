@@ -450,6 +450,21 @@
             }
         }
 
+
+        /* Night theme: slightly darker from 10 PM until 7 AM in the user's local time. */
+        body.night-theme {
+            background-color: #17181b;
+        }
+        body.night-theme #chat-view,
+        body.night-theme .bg-darkbg {
+            background-color: #17181b !important;
+        }
+        body.night-theme .bg-cardbg {
+            background-color: #25272b !important;
+        }
+        body.night-theme .bg-inputbg {
+            background-color: #303238 !important;
+        }
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden select-none">
@@ -484,6 +499,32 @@
                 </div>
                 <div class="flex justify-end gap-3">
                     <button type="button" onclick="closeReportModal()" class="px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white rounded-lg text-sm font-medium transition">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-danger hover:bg-opacity-90 text-white rounded-lg text-sm font-medium transition">Submit Report</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="image-report-modal" class="fixed inset-0 bg-black/70 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-cardbg border border-bordercolor rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+            <h3 class="text-lg font-bold text-white mb-2"><i class="fa-solid fa-flag text-danger mr-2"></i> Report Image</h3>
+            <p class="text-xs text-neutral-400 mb-4">Report this image if it contains inappropriate, sexual, or otherwise prohibited content.</p>
+            <form onsubmit="submitImageReport(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-neutral-400 mb-1">Reason</label>
+                    <select id="image-report-reason" class="w-full bg-inputbg border border-bordercolor rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-accentcolor transition">
+                        <option value="Sexual / NSFW">Sexual / NSFW</option>
+                        <option value="Graphic / Violent">Graphic / Violent</option>
+                        <option value="Harassment">Harassment</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-neutral-400 mb-1">Additional Details</label>
+                    <textarea id="image-report-details" placeholder="Explain what is wrong with the image..." class="w-full bg-inputbg border border-bordercolor rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accentcolor transition h-20 resize-none"></textarea>
+                </div>
+                <div class="flex justify-end gap-3">
+                    <button type="button" onclick="closeImageReportModal()" class="px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white rounded-lg text-sm font-medium transition">Cancel</button>
                     <button type="submit" class="px-4 py-2 bg-danger hover:bg-opacity-90 text-white rounded-lg text-sm font-medium transition">Submit Report</button>
                 </div>
             </form>
@@ -767,7 +808,12 @@
                         <button type="button" onclick="formatText('<u>', '</u>')" title="Underline" class="px-2.5 py-1 bg-inputbg hover:bg-neutral-600 text-xs text-neutral-300 rounded underline border border-bordercolor transition">U</button>
                         <button type="button" onclick="formatText('`', '`')" title="Code" class="px-2.5 py-1 bg-inputbg hover:bg-neutral-600 text-xs text-neutral-300 rounded font-mono border border-bordercolor transition">&lt;/&gt;</button>
                     </div>
+                    <div id="message-image-preview" class="hidden mb-2 px-1"></div>
                     <form onsubmit="sendMessage(event)" class="flex gap-3">
+                        <input type="file" id="message-image-input" accept="image/*" class="hidden" onchange="handleMessageImageSelect(event)">
+                        <button type="button" onclick="document.getElementById('message-image-input').click()" title="Attach image" class="bg-inputbg border border-bordercolor text-neutral-300 hover:text-white hover:bg-neutral-600 px-4 py-3 rounded-xl text-sm transition flex items-center justify-center">
+                            <i class="fa-solid fa-image"></i>
+                        </button>
                         <input type="text" id="message-input" autocomplete="off" placeholder="Message #global-channel" 
                                class="flex-1 bg-inputbg border border-bordercolor rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-accentcolor transition">
                         <button type="submit" class="bg-accentcolor text-white font-medium px-6 py-3 rounded-xl text-sm hover:bg-opacity-90 transition flex items-center justify-center">
@@ -813,7 +859,12 @@
                     </header>
                     <div id="dm-messages" class="flex-1 overflow-y-auto p-6 space-y-4"></div>
                     <div class="p-4 bg-cardbg border-t border-bordercolor">
+                        <div id="dm-image-preview" class="hidden mb-2 px-1"></div>
                         <form onsubmit="sendDmMessage(event)" class="flex gap-3">
+                            <input type="file" id="dm-image-input" accept="image/*" class="hidden" onchange="handleDmImageSelect(event)">
+                            <button type="button" onclick="document.getElementById('dm-image-input').click()" title="Attach image" class="bg-inputbg border border-bordercolor text-neutral-300 hover:text-white hover:bg-neutral-600 px-4 py-3 rounded-xl text-sm transition flex items-center justify-center">
+                                <i class="fa-solid fa-image"></i>
+                            </button>
                             <input type="text" id="dm-input" autocomplete="off" placeholder="Type a private message..." 
                                    class="flex-1 bg-inputbg border border-bordercolor rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-accentcolor transition">
                             <button type="submit" class="bg-accentcolor text-white font-medium px-6 py-3 rounded-xl text-sm hover:bg-opacity-90 transition flex items-center justify-center">
@@ -838,6 +889,7 @@
             push,
             onChildAdded,
             onChildChanged,
+            onChildRemoved,
             onValue,
             get,
             set,
@@ -845,6 +897,7 @@
             child,
             off
         } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
+        import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-storage.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCDQWNVbjxxscF-hpqHTdJFTymmkCYmJDU",
@@ -858,8 +911,10 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app, "https://global-chat-17cb7-default-rtdb.firebaseio.com");
+        const storage = getStorage(app);
 
         window.dbInstance = db;
+        window.storageInstance = storage;
         window.currentUser = null;
         window.croppedBase64Image = null;
         window.settingsCroppedBase64 = null;
@@ -869,11 +924,14 @@
         window.currentPendingRequestFrom = null;
         window.reportTargetUsername = null;
         window.activeDmRef = null;
+        window.pendingMessageImage = null;
+        window.pendingDmImage = null;
         window.allUsers = {}; // Cache for live user profiles
 
         let lastMessageTimes = [];
         let idleTimer = null;
         let isManualIdle = false;
+        let isAutoIdle = false;
 
         window.addEventListener('DOMContentLoaded', () => {
             if ('Notification' in window && Notification.permission !== 'granted') {
@@ -899,6 +957,7 @@
             if (!window.currentUser) return;
             window.currentUser.status = status;
             isManualIdle = (status === 'idle');
+            isAutoIdle = false;
             localStorage.setItem('chat2_session', JSON.stringify(window.currentUser));
             try {
                 await set(ref(db, `users/${window.currentUser.username}/status`), status);
@@ -919,19 +978,35 @@
             if (selector) selector.value = status;
         }
 
-        function resetIdleTimer() {
+        async function registerActivity() {
             if (!window.currentUser) return;
             clearTimeout(idleTimer);
-            idleTimer = setTimeout(() => {
+            // Only an automatically-created Idle state is cleared by activity.
+            // A manually selected Idle/Offline state is respected.
+            if (isAutoIdle && window.currentUser.status === 'idle' && !isManualIdle) {
+                isAutoIdle = false;
+                await window.changeUserStatus('online');
+            }
+            idleTimer = setTimeout(async () => {
                 if (window.currentUser && window.currentUser.status === 'online' && !isManualIdle) {
-                    window.changeUserStatus('idle');
+                    await window.changeUserStatus('idle');
+                    // changeUserStatus normally treats Idle as manual; this one is automatic.
+                    isManualIdle = false;
+                    isAutoIdle = true;
                 }
             }, 15 * 60 * 1000);
         }
 
-        window.addEventListener('mousemove', resetIdleTimer);
+        function resetIdleTimer() { registerActivity(); }
+        window.addEventListener('mousemove', resetIdleTimer, {passive:true});
         window.addEventListener('keydown', resetIdleTimer);
         window.addEventListener('click', resetIdleTimer);
+        window.addEventListener('touchstart', resetIdleTimer, {passive:true});
+        window.addEventListener('pointerdown', resetIdleTimer, {passive:true});
+        window.addEventListener('focus', resetIdleTimer);
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) resetIdleTimer();
+        });
 
         async function checkAutoMod(text) {
             if (!window.currentUser) return null;
@@ -1026,13 +1101,14 @@
             }
         }
 
-        const profanityList = ['badword1', 'badword2', 'spam', 'scam', 'abuse', 'slur1', 'cuss1'];
+        const profanityList = ['badword1', 'badword2', 'spam', 'scam', 'abuse', 'slur1', 'cuss1', 'shit', 'fuck', 'bitch', 'asshole', 'damn', 'crap'];
         function validateContent(text) {
             if (!text || typeof text !== 'string') return false;
             const emojiRegex = /[\p{Emoji_Presentation}\p{Extended_Pictographic}]/u;
             if (emojiRegex.test(text)) return "Emojis are strictly prohibited.";
             const lower = text.toLowerCase();
             for (let word of profanityList) {
+                if (['spam','scam','abuse'].includes(word)) continue;
                 if (lower.includes(word)) return "Content violates AI community safety guidelines.";
             }
             return null;
@@ -1285,6 +1361,7 @@
             }
 
             isManualIdle = (window.currentUser.status === 'idle');
+            isAutoIdle = false;
             updateStatusUI(window.currentUser.status || 'online');
             listenForMessages();
             listenForUserData();
@@ -1309,6 +1386,13 @@
             document.getElementById('auth-view').classList.remove('hidden');
             renderSavedAccounts();
         }
+
+        function updateNightTheme() {
+            const hour = new Date().getHours();
+            document.body.classList.toggle('night-theme', hour >= 22 || hour < 7);
+        }
+        updateNightTheme();
+        setInterval(updateNightTheme, 60 * 1000);
 
         window.switchTab = function(tabName) {
             const globalPanel = document.getElementById('panel-global');
@@ -1641,35 +1725,102 @@
             }
         }
 
+        async function uploadChatImage(file, folder) {
+            if (!file || !file.type.startsWith('image/')) throw new Error('Please select an image file.');
+            if (file.size > 8 * 1024 * 1024) throw new Error('Images must be 8 MB or smaller.');
+            const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+            const path = `chat-images/${folder}/${window.currentUser.username}/${Date.now()}_${safeName}`;
+            const imageRef = storageRef(window.storageInstance, path);
+            await uploadBytes(imageRef, file, { contentType: file.type });
+            return await getDownloadURL(imageRef);
+        }
+
+        function renderPendingImagePreview(file, previewId, inputId, placeholderId, defaultPlaceholder) {
+            const preview = document.getElementById(previewId);
+            const input = document.getElementById(placeholderId);
+            if (!preview || !input || !file) return;
+            const objectUrl = URL.createObjectURL(file);
+            preview.innerHTML = `
+                <div class="inline-flex items-center gap-3 bg-inputbg border border-bordercolor rounded-xl p-2 max-w-full">
+                    <img src="${objectUrl}" alt="Image preview" class="w-16 h-16 rounded-lg object-cover border border-bordercolor">
+                    <div class="min-w-0">
+                        <p class="text-xs text-white truncate max-w-[180px]">${escapeHtml(file.name)}</p>
+                        <p class="text-[10px] text-neutral-500">Ready to send</p>
+                    </div>
+                    <button type="button" onclick="clearPendingImage('${previewId}', '${inputId}', '${placeholderId}', '${defaultPlaceholder}')" class="w-8 h-8 rounded-lg bg-neutral-700 hover:bg-neutral-600 text-neutral-300 flex items-center justify-center" title="Remove image">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>`;
+            preview.classList.remove('hidden');
+            input.placeholder = `Image attached: ${file.name}`;
+        }
+
+        window.clearPendingImage = function(previewId, inputId, placeholderId, defaultPlaceholder) {
+            const preview = document.getElementById(previewId);
+            const fileInput = document.getElementById(inputId);
+            const input = document.getElementById(placeholderId);
+            if (preview) { preview.innerHTML = ''; preview.classList.add('hidden'); }
+            if (fileInput) fileInput.value = '';
+            if (input) input.placeholder = defaultPlaceholder;
+            if (inputId === 'message-image-input') window.pendingMessageImage = null;
+            if (inputId === 'dm-image-input') window.pendingDmImage = null;
+        }
+
+        window.handleMessageImageSelect = function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            if (!file.type.startsWith('image/')) { showModal('Invalid Image', 'Please select an image file.'); event.target.value = ''; return; }
+            if (file.size > 8 * 1024 * 1024) { showModal('Image Too Large', 'Images must be 8 MB or smaller.'); event.target.value = ''; return; }
+            window.pendingMessageImage = file;
+            renderPendingImagePreview(file, 'message-image-preview', 'message-image-input', 'message-input', 'Message #global-channel');
+        }
+
+        window.handleDmImageSelect = function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            if (!file.type.startsWith('image/')) { showModal('Invalid Image', 'Please select an image file.'); event.target.value = ''; return; }
+            if (file.size > 8 * 1024 * 1024) { showModal('Image Too Large', 'Images must be 8 MB or smaller.'); event.target.value = ''; return; }
+            window.pendingDmImage = file;
+            renderPendingImagePreview(file, 'dm-image-preview', 'dm-image-input', 'dm-input', 'Type a private message...');
+        }
+
         window.sendDmMessage = async function(event) {
             event.preventDefault();
             const input = document.getElementById('dm-input');
             const text = input.value.trim();
-            if (!text || !window.activeDmFriend) return;
+            const imageFile = window.pendingDmImage;
+            if ((!text && !imageFile) || !window.activeDmFriend) return;
 
-            const modErr = await checkAutoMod(text);
+            const modErr = text ? await checkAutoMod(text) : null;
             if (modErr) { showModal('Action Blocked', modErr); return; }
 
-            const chatId = [window.currentUser.username, window.activeDmFriend].sort().join('_');
-            const dmRef = ref(db, `dms/${chatId}/messages`);
-
-            const msgData = {
-                senderUsername: window.currentUser.username,
-                senderDisplayName: window.currentUser.displayName,
-                senderPfp: window.currentUser.pfp || null,
-                text: text,
-                timestamp: Date.now()
-            };
-
             try {
+                const chatId = [window.currentUser.username, window.activeDmFriend].sort().join('_');
+                const dmRef = ref(db, `dms/${chatId}/messages`);
+                let imageUrl = null;
+                if (imageFile) imageUrl = await uploadChatImage(imageFile, 'dm');
+                const msgData = {
+                    senderUsername: window.currentUser.username,
+                    senderDisplayName: window.currentUser.displayName,
+                    senderPfp: window.currentUser.pfp || null,
+                    text: text || '',
+                    imageUrl,
+                    timestamp: Date.now()
+                };
                 await push(dmRef, msgData);
                 input.value = '';
-            } catch (e) { showModal('Error', 'Failed to send DM.'); }
+                input.placeholder = 'Type a private message...';
+                window.pendingDmImage = null;
+                const fileInput = document.getElementById('dm-image-input');
+                if (fileInput) fileInput.value = '';
+                const dmPreview = document.getElementById('dm-image-preview');
+                if (dmPreview) { dmPreview.innerHTML = ''; dmPreview.classList.add('hidden'); }
+            } catch (e) { showModal('Error', e.message || 'Failed to send DM.'); }
         }
 
         window.deleteDmMessage = async function(chatId, msgKey) {
             try {
-                await set(ref(db, `dms/${chatId}/messages/${msgKey}/deletedFor/${window.currentUser.username}`), true);
+                await remove(ref(db, `dms/${chatId}/messages/${msgKey}`));
                 const msgEl = document.getElementById(`dm-msg-${msgKey}`);
                 if (msgEl) msgEl.remove();
             } catch (e) { showModal('Error', 'Could not delete message.'); }
@@ -1679,35 +1830,44 @@
             event.preventDefault();
             const input = document.getElementById('message-input');
             const text = input.value.trim();
-            if (!text) return;
+            const imageFile = window.pendingMessageImage;
+            if (!text && !imageFile) return;
 
-            const modErr = await checkAutoMod(text);
+            const modErr = text ? await checkAutoMod(text) : null;
             if (modErr) { showModal('Action Blocked', modErr); return; }
 
-            const messageData = {
-                senderUsername: window.currentUser.username,
-                senderDisplayName: window.currentUser.displayName,
-                senderPfp: window.currentUser.pfp || null,
-                text: text,
-                timestamp: Date.now(),
-                replyTo: window.activeReplyData ? {
-                    id: window.activeReplyData.id,
-                    sender: window.activeReplyData.sender,
-                    text: window.activeReplyData.text,
-                    targetUsername: window.activeReplyData.targetUsername
-                } : null
-            };
-
             try {
+                let imageUrl = null;
+                if (imageFile) imageUrl = await uploadChatImage(imageFile, 'global');
+                const messageData = {
+                    senderUsername: window.currentUser.username,
+                    senderDisplayName: window.currentUser.displayName,
+                    senderPfp: window.currentUser.pfp || null,
+                    text: text || '',
+                    imageUrl,
+                    timestamp: Date.now(),
+                    replyTo: window.activeReplyData ? {
+                        id: window.activeReplyData.id,
+                        sender: window.activeReplyData.sender,
+                        text: window.activeReplyData.text,
+                        targetUsername: window.activeReplyData.targetUsername
+                    } : null
+                };
                 await push(ref(db, 'messages'), messageData);
                 input.value = '';
+                input.placeholder = 'Message #global-channel';
+                window.pendingMessageImage = null;
+                const fileInput = document.getElementById('message-image-input');
+                if (fileInput) fileInput.value = '';
+                const messagePreview = document.getElementById('message-image-preview');
+                if (messagePreview) { messagePreview.innerHTML = ''; messagePreview.classList.add('hidden'); }
                 cancelReply();
-            } catch (e) { showModal('Error', 'Failed to send message.'); }
+            } catch (e) { showModal('Error', e.message || 'Failed to send message.'); }
         }
 
         window.deleteMessage = async function(msgId) {
             try {
-                await set(ref(db, `messages/${msgId}/deletedFor/${window.currentUser.username}`), true);
+                await remove(ref(db, `messages/${msgId}`));
                 const msgEl = document.getElementById(`msg-${msgId}`);
                 if (msgEl) msgEl.remove();
             } catch (e) { showModal('Error', 'Could not delete message.'); }
@@ -1769,7 +1929,9 @@
                 let contentMarkup = `
                     <div class="p-3.5 rounded-xl text-sm leading-relaxed bg-cardbg border border-bordercolor text-neutral-200">
                         ${replyMarkup}
-                        <p class="break-words">${formattedText}</p>
+                        ${msg.imageUrl ? `<img src="${escapeHtml(msg.imageUrl)}" alt="Attached image" loading="lazy" class="mt-2 max-w-full max-h-80 rounded-lg border border-bordercolor object-contain cursor-pointer" onclick="window.open('${escapeHtml(msg.imageUrl)}', '_blank')">` : ''}
+                        ${msg.text ? `<p class="break-words">${formattedText}</p>` : ''}
+                        ${msg.imageUrl ? `<div class="flex items-center gap-3 mt-2 pt-2 border-t border-bordercolor"><button type="button" onclick="downloadImageAsPng('${escapeHtml(msg.imageUrl)}')" class="text-[10px] text-neutral-400 hover:text-white transition"><i class="fa-solid fa-download mr-1"></i> Download PNG</button><button type="button" onclick="openImageReportModal('${escapeHtml(msg.imageUrl)}', '${escapeHtml(msg.senderUsername)}', '${msgId}')" class="text-[10px] text-neutral-400 hover:text-danger transition"><i class="fa-solid fa-flag mr-1"></i> Report</button></div>` : ''}
                     </div>
                 `;
 
@@ -1806,6 +1968,11 @@
                 if (msg.deletedFor && msg.deletedFor[window.currentUser.username]) {
                     if (msgEl) msgEl.remove();
                 }
+            });
+
+            onChildRemoved(messagesRef, (snapshot) => {
+                const msgEl = document.getElementById(`msg-${snapshot.key}`);
+                if (msgEl) msgEl.remove();
             });
         }
 
@@ -1844,7 +2011,9 @@
                     <div>${avatar}</div>
                     <div class="max-w-md ${isSelf ? 'text-right' : ''}">
                         <div class="p-3 rounded-xl text-sm ${isSelf ? 'bg-accentcolor text-white rounded-tr-none' : 'bg-cardbg border border-bordercolor text-neutral-200 rounded-tl-none'}">
-                            <p class="break-words">${escapeHtml(msg.text)}</p>
+                            ${msg.imageUrl ? `<img src="${escapeHtml(msg.imageUrl)}" alt="Attached image" loading="lazy" class="mb-2 max-w-full max-h-80 rounded-lg object-contain cursor-pointer" onclick="window.open('${escapeHtml(msg.imageUrl)}', '_blank')">` : ''}
+                            ${msg.text ? `<p class="break-words">${escapeHtml(msg.text)}</p>` : ''}
+                            ${msg.imageUrl ? `<div class="flex items-center gap-3 mt-2 pt-2 border-t border-white/10"><button type="button" onclick="downloadImageAsPng('${escapeHtml(msg.imageUrl)}')" class="text-[10px] opacity-80 hover:opacity-100 transition"><i class="fa-solid fa-download mr-1"></i> Download PNG</button><button type="button" onclick="openImageReportModal('${escapeHtml(msg.imageUrl)}', '${escapeHtml(msg.senderUsername)}', '${msgKey}')" class="text-[10px] opacity-80 hover:text-danger transition"><i class="fa-solid fa-flag mr-1"></i> Report</button></div>` : ''}
                         </div>
                         ${deleteBtn}
                     </div>
@@ -1861,7 +2030,87 @@
                     if (msgEl) msgEl.remove();
                 }
             });
+
+            onChildRemoved(dmRef, (snapshot) => {
+                const msgEl = document.getElementById(`dm-msg-${snapshot.key}`);
+                if (msgEl) msgEl.remove();
+            });
         }
+
+        window.openImageReportModal = function(imageUrl, senderUsername, messageId) {
+            window.reportImageData = { imageUrl, senderUsername, messageId };
+            const modal = document.getElementById('image-report-modal');
+            if (modal) modal.classList.remove('hidden');
+        };
+
+        window.closeImageReportModal = function() {
+            const modal = document.getElementById('image-report-modal');
+            if (modal) modal.classList.add('hidden');
+            window.reportImageData = null;
+        };
+
+        window.submitImageReport = async function(event) {
+            event.preventDefault();
+            if (!window.reportImageData || !window.currentUser) return;
+            const reason = document.getElementById('image-report-reason').value;
+            const details = document.getElementById('image-report-details').value.trim();
+            try {
+                await push(ref(db, 'imageReports'), {
+                    reporter: window.currentUser.username,
+                    reportedUser: window.reportImageData.senderUsername,
+                    messageId: window.reportImageData.messageId,
+                    imageUrl: window.reportImageData.imageUrl,
+                    reason,
+                    details,
+                    timestamp: Date.now(),
+                    status: 'pending'
+                });
+                closeImageReportModal();
+                showModal('Report Submitted', 'The image was reported for moderation.');
+            } catch (e) {
+                showModal('Error', 'Failed to submit image report.');
+            }
+        };
+
+        window.downloadImageAsPng = async function(imageUrl) {
+            try {
+                const response = await fetch(imageUrl);
+                if (!response.ok) throw new Error('Download failed');
+                const blob = await response.blob();
+                const objectUrl = URL.createObjectURL(blob);
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.naturalWidth;
+                    canvas.height = img.naturalHeight;
+                    canvas.getContext('2d').drawImage(img, 0, 0);
+                    canvas.toBlob((pngBlob) => {
+                        if (!pngBlob) throw new Error('PNG conversion failed');
+                        const pngUrl = URL.createObjectURL(pngBlob);
+                        const a = document.createElement('a');
+                        a.href = pngUrl;
+                        a.download = 'chat-image.png';
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                        URL.revokeObjectURL(pngUrl);
+                    }, 'image/png');
+                    URL.revokeObjectURL(objectUrl);
+                };
+                img.onerror = () => { URL.revokeObjectURL(objectUrl); throw new Error('Image could not be read'); };
+                img.src = objectUrl;
+            } catch (e) {
+                // If the storage host blocks canvas conversion, still give the user the original file.
+                const a = document.createElement('a');
+                a.href = imageUrl;
+                a.target = '_blank';
+                a.rel = 'noopener';
+                a.download = 'chat-image';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            }
+        };
 
         window.setReply = function(id, sender, text, senderUsername) {
             window.activeReplyData = { id, sender, text, targetUsername: senderUsername };
