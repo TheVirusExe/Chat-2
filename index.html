@@ -351,6 +351,7 @@
             ref,
             push,
             onChildAdded,
+            onChildChanged,
             onValue,
             get,
             set,
@@ -1147,47 +1148,6 @@
             listenForDmMessages(username);
         }
 
-        function listenForDmMessages(friendUsername) {
-            const container = document.getElementById('dm-messages');
-            container.innerHTML = '';
-            
-            const chatId = [window.currentUser.username, friendUsername].sort().join('_');
-            const dmRef = ref(db, `dms/${chatId}/messages`);
-
-            if (window.activeDmRef) {
-                off(window.activeDmRef);
-            }
-            window.activeDmRef = dmRef;
-
-            onChildAdded(dmRef, (snapshot) => {
-                const msg = snapshot.val();
-                const msgKey = snapshot.key;
-                const isSelf = msg.senderUsername === window.currentUser.username;
-                const div = document.createElement('div');
-                div.className = `flex items-start gap-3 mb-3 group ${isSelf ? 'flex-row-reverse' : ''}`;
-                
-                let senderData = (window.allUsers && window.allUsers[msg.senderUsername]) || {};
-                let currentName = senderData.displayName || msg.senderDisplayName;
-                let currentPfp = senderData.pfp !== undefined ? senderData.pfp : msg.senderPfp;
-
-                let avatar = currentPfp ? `<img src="${currentPfp}" class="w-8 h-8 rounded-full object-cover cursor-pointer" onclick="openProfileModal('${msg.senderUsername}')">` : `<div class="w-8 h-8 rounded-full bg-neutral-700 flex items-center justify-center text-xs font-bold text-white cursor-pointer" onclick="openProfileModal('${msg.senderUsername}')">${currentName.charAt(0)}</div>`;
-                
-                let deleteBtn = isSelf ? `<button onclick="deleteDmMessage('${chatId}', '${msgKey}')" class="text-[10px] text-neutral-500 hover:text-danger opacity-0 group-hover:opacity-100 transition mt-1"><i class="fa-solid fa-trash"></i> Delete</button>` : '';
-
-                div.innerHTML = `
-                    <div>${avatar}</div>
-                    <div class="max-w-md ${isSelf ? 'text-right' : ''}">
-                        <div class="p-3 rounded-xl text-sm ${isSelf ? 'bg-accentcolor text-white rounded-tr-none' : 'bg-cardbg border border-bordercolor text-neutral-200 rounded-tl-none'}">
-                            <p class="break-words">${escapeHtml(msg.text)}</p>
-                        </div>
-                        ${deleteBtn}
-                    </div>
-                `;
-                container.appendChild(div);
-                container.scrollTop = container.scrollHeight;
-            });
-        }
-
         window.sendDmMessage = async function(event) {
             event.preventDefault();
             const input = document.getElementById('dm-input');
@@ -1216,10 +1176,9 @@
 
         window.deleteDmMessage = async function(chatId, msgKey) {
             try {
-                await remove(ref(db, `dms/${chatId}/messages/${msgKey}`));
-                const container = document.getElementById('dm-messages');
-                container.innerHTML = '';
-                listenForDmMessages(window.activeDmFriend);
+                await set(ref(db, `dms/${chatId}/messages/${msgKey}/deletedFor/${window.currentUser.username}`), true);
+                const msgEl = document.getElementById(`dm-msg-${msgKey}`);
+                if (msgEl) msgEl.remove();
             } catch (e) { showModal('Error', 'Could not delete message.'); }
         }
 
@@ -1255,7 +1214,7 @@
 
         window.deleteMessage = async function(msgId) {
             try {
-                await remove(ref(db, 'messages/' + msgId));
+                await set(ref(db, `messages/${msgId}/deletedFor/${window.currentUser.username}`), true);
                 const msgEl = document.getElementById(`msg-${msgId}`);
                 if (msgEl) msgEl.remove();
             } catch (e) { showModal('Error', 'Could not delete message.'); }
@@ -1268,6 +1227,8 @@
             onChildAdded(messagesRef, (snapshot) => {
                 const msg = snapshot.val();
                 const msgId = snapshot.key;
+
+                if (msg.deletedFor && msg.deletedFor[window.currentUser.username]) return;
 
                 // Fix: Prevent duplicate messages in DOM
                 if (document.getElementById(`msg-${msgId}`)) return;
@@ -1343,6 +1304,69 @@
 
                 container.appendChild(div);
                 container.scrollTop = container.scrollHeight;
+            });
+
+            onChildChanged(messagesRef, (snapshot) => {
+                const msg = snapshot.val();
+                const msgId = snapshot.key;
+                const msgEl = document.getElementById(`msg-${msgId}`);
+                if (msg.deletedFor && msg.deletedFor[window.currentUser.username]) {
+                    if (msgEl) msgEl.remove();
+                }
+            });
+        }
+
+        function listenForDmMessages(friendUsername) {
+            const container = document.getElementById('dm-messages');
+            container.innerHTML = '';
+            
+            const chatId = [window.currentUser.username, friendUsername].sort().join('_');
+            const dmRef = ref(db, `dms/${chatId}/messages`);
+
+            if (window.activeDmRef) {
+                off(window.activeDmRef);
+            }
+            window.activeDmRef = dmRef;
+
+            onChildAdded(dmRef, (snapshot) => {
+                const msg = snapshot.val();
+                const msgKey = snapshot.key;
+
+                if (msg.deletedFor && msg.deletedFor[window.currentUser.username]) return;
+
+                const isSelf = msg.senderUsername === window.currentUser.username;
+                const div = document.createElement('div');
+                div.id = `dm-msg-${msgKey}`;
+                div.className = `flex items-start gap-3 mb-3 group ${isSelf ? 'flex-row-reverse' : ''}`;
+                
+                let senderData = (window.allUsers && window.allUsers[msg.senderUsername]) || {};
+                let currentName = senderData.displayName || msg.senderDisplayName;
+                let currentPfp = senderData.pfp !== undefined ? senderData.pfp : msg.senderPfp;
+
+                let avatar = currentPfp ? `<img src="${currentPfp}" class="w-8 h-8 rounded-full object-cover cursor-pointer" onclick="openProfileModal('${msg.senderUsername}')">` : `<div class="w-8 h-8 rounded-full bg-neutral-700 flex items-center justify-center text-xs font-bold text-white cursor-pointer" onclick="openProfileModal('${msg.senderUsername}')">${currentName.charAt(0)}</div>`;
+                
+                let deleteBtn = isSelf ? `<button onclick="deleteDmMessage('${chatId}', '${msgKey}')" class="text-[10px] text-neutral-500 hover:text-danger opacity-0 group-hover:opacity-100 transition mt-1"><i class="fa-solid fa-trash"></i> Delete</button>` : '';
+
+                div.innerHTML = `
+                    <div>${avatar}</div>
+                    <div class="max-w-md ${isSelf ? 'text-right' : ''}">
+                        <div class="p-3 rounded-xl text-sm ${isSelf ? 'bg-accentcolor text-white rounded-tr-none' : 'bg-cardbg border border-bordercolor text-neutral-200 rounded-tl-none'}">
+                            <p class="break-words">${escapeHtml(msg.text)}</p>
+                        </div>
+                        ${deleteBtn}
+                    </div>
+                `;
+                container.appendChild(div);
+                container.scrollTop = container.scrollHeight;
+            });
+
+            onChildChanged(dmRef, (snapshot) => {
+                const msg = snapshot.val();
+                const msgKey = snapshot.key;
+                const msgEl = document.getElementById(`dm-msg-${msgKey}`);
+                if (msg.deletedFor && msg.deletedFor[window.currentUser.username]) {
+                    if (msgEl) msgEl.remove();
+                }
             });
         }
 
