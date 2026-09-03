@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Parasite A.I & Global Chat</title>
-    <!-- Tailwind CSS CDN -->
+    <title>Chat 2.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -12,1012 +11,1357 @@
             theme: {
                 extend: {
                     colors: {
-                        dark: {
-                            950: '#09090b',
-                            900: '#121214',
-                            800: '#18181b',
-                            700: '#27272a',
-                            600: '#3f3f46',
-                        }
+                        darkbg: '#1e1f22',
+                        cardbg: '#2b2d31',
+                        bordercolor: '#3f4147',
+                        inputbg: '#383a40',
+                        accentcolor: '#5865f2',
+                        orangereply: '#f0b232',
+                        danger: '#ed4245',
+                        success: '#3ba55d',
+                        idlecolor: '#faa61a',
+                        offlinecolor: '#747f8d'
                     }
                 }
             }
         }
     </script>
-    <!-- FontAwesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #27272a;
-            border-radius: 3px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #3f3f46;
-        }
-        .typing-dot {
-            animation: bounce 1.4s infinite ease-in-out both;
-        }
-        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
-        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
-        @keyframes bounce {
-            0%, 80%, 100% { transform: scale(0); }
-            40% { transform: scale(1.0); }
-        }
-        @keyframes slowPulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.5; transform: scale(0.92); }
-        }
-        .ai-orb-pulse {
-            animation: slowPulse 2.5s infinite ease-in-out;
-        }
-        #sidebar {
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .reply-highlight {
-            border-left: 3px solid #f97316 !important;
-            background-color: rgba(249, 115, 22, 0.05) !important;
-        }
+        body { background-color: #1e1f22; color: #dbdee1; font-family: system-ui, -apple-system, sans-serif; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #2b2d31; }
+        ::-webkit-scrollbar-thumb { background: #1a1b1e; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3f4147; }
     </style>
 </head>
-<body class="bg-dark-950 text-zinc-100 h-screen flex overflow-hidden font-sans relative">
+<body class="h-screen flex flex-col overflow-hidden select-none">
 
-    <!-- BAN OVERLAY SCREEN -->
-    <div id="banScreen" class="fixed inset-0 bg-dark-950 z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-dark-900 border border-dark-700 w-full max-w-lg rounded-2xl p-8 shadow-2xl space-y-6 text-center">
-            <div class="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto text-red-400 text-2xl">
-                <i class="fa-solid fa-ban"></i>
+    <div id="modal-container" class="fixed inset-0 bg-black/70 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-cardbg border border-bordercolor rounded-xl max-w-md w-full p-6 shadow-2xl relative">
+            <h3 id="modal-title" class="text-lg font-semibold text-white mb-2">Notification</h3>
+            <p id="modal-message" class="text-sm text-neutral-300 mb-6">Message content here.</p>
+            <div id="modal-actions" class="flex justify-end gap-3">
+                <button onclick="closeModal()" class="px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white rounded-lg text-sm font-medium transition">Close</button>
             </div>
-            <div class="space-y-2">
-                <h2 class="text-2xl font-bold tracking-tight text-white">Account Suspended</h2>
-                <p id="banMessage" class="text-sm text-zinc-400 leading-relaxed">
-                    You have violated our strict community guidelines regarding slurs, bullying, cussing, and abusive behavior too many times. Your access has been restricted.
-                </p>
-            </div>
-            
-            <div class="bg-dark-950 border border-dark-800 rounded-xl p-4 text-xs text-zinc-400 font-mono">
-                Ban Duration: 48 Hours remaining (or enter bypass password)
-            </div>
-
-            <!-- Password Unban Box -->
-            <div class="space-y-3 pt-2">
-                <div class="relative">
-                    <input type="password" id="unbanPasswordInput" placeholder="Enter security bypass password..." class="w-full bg-dark-950 border border-dark-700 rounded-xl px-4 py-3 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-zinc-500 text-center font-mono tracking-widest">
-                </div>
-                <button onclick="checkUnbanPassword()" class="w-full bg-zinc-100 hover:bg-white text-zinc-950 font-medium py-3 rounded-xl text-sm transition-colors shadow-lg">
-                    Submit Password
-                </button>
-            </div>
-            <p id="unbanError" class="text-xs text-red-400 hidden"></p>
         </div>
     </div>
 
-    <!-- Mobile Sidebar Backdrop -->
-    <div id="sidebarBackdrop" onclick="toggleSidebar()" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-20 md:hidden hidden"></div>
-
-    <!-- SIDEBAR SECTION -->
-    <aside id="sidebar" class="w-72 bg-dark-900 border-r border-dark-800 flex flex-col z-30 fixed md:relative inset-y-0 left-0 transform -translate-x-full md:translate-x-0 shadow-2xl md:shadow-none">
-        
-        <!-- Navigation Switcher: AI Chat vs Global Chat -->
-        <div class="p-3 border-b border-dark-800 space-y-2">
-            <div class="grid grid-cols-2 gap-2">
-                <button onclick="switchView('ai')" id="navAiBtn" class="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-semibold transition-colors bg-zinc-800 text-white border border-zinc-700">
-                    <i class="fa-solid fa-robot"></i> AI Chat
-                </button>
-                <button onclick="switchView('global')" id="navGlobalBtn" class="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-semibold transition-colors bg-dark-950 text-zinc-400 hover:text-zinc-200 border border-dark-800">
-                    <i class="fa-solid fa-globe"></i> Global Chat
-                </button>
-            </div>
-            
-            <div id="aiHeaderActions" class="flex items-center gap-2 pt-1">
-                <button onclick="createNewChat()" class="flex-1 flex items-center justify-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 py-2 px-3 rounded-xl text-xs font-medium transition-colors border border-zinc-700">
-                    <i class="fa-solid fa-plus text-xs"></i> New Chat
-                </button>
-                <button onclick="toggleSidebar()" class="md:hidden text-zinc-400 hover:text-white p-2">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
-        </div>
-
-        <!-- Warning Counter Badge in Sidebar -->
-        <div id="warningBadgeContainer" class="px-3 pt-3 hidden">
-            <div class="bg-amber-500/10 border border-amber-500/20 rounded-xl p-2.5 text-xs flex items-center justify-between text-amber-300">
-                <span class="flex items-center gap-1.5"><i class="fa-solid fa-triangle-exclamation"></i> Warnings:</span>
-                <span id="warningCountDisplay" class="font-bold font-mono">0 / 5</span>
-            </div>
-        </div>
-
-        <!-- Chat History List (AI Mode) -->
-        <div id="chatHistoryList" class="flex-1 overflow-y-auto p-3 space-y-1">
-            <!-- Dynamically populated chats -->
-        </div>
-
-        <!-- Global Chat Info (Global Mode) -->
-        <div id="globalSidebarInfo" class="flex-1 overflow-y-auto p-3 space-y-3 hidden">
-            <div class="bg-dark-950 border border-dark-800 rounded-xl p-3 text-xs text-zinc-400 space-y-2">
-                <div class="font-semibold text-zinc-200 flex items-center gap-2">
-                    <i class="fa-solid fa-globe text-emerald-400"></i> Global Community Channel
+    <div id="report-modal" class="fixed inset-0 bg-black/70 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-cardbg border border-bordercolor rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+            <h3 class="text-lg font-bold text-white mb-2"><i class="fa-solid fa-flag text-danger mr-2"></i> Report User</h3>
+            <p class="text-xs text-neutral-400 mb-4">Please specify the reason for reporting <span id="report-target-name" class="text-white font-semibold"></span>:</p>
+            <form onsubmit="submitUserReport(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-neutral-400 mb-1">Reason</label>
+                    <select id="report-reason" class="w-full bg-inputbg border border-bordercolor rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-accentcolor transition">
+                        <option value="Harassment">Harassment or Bullying</option>
+                        <option value="Spam">Spam or Scam</option>
+                        <option value="Inappropriate Content">Inappropriate Content / Slurs</option>
+                        <option value="Other">Other Violation</option>
+                    </select>
                 </div>
-                <p class="text-[11px] leading-relaxed">Connect and chat with everyone in real-time. Messages sync instantly across all active users worldwide.</p>
-            </div>
-        </div>
-
-        <!-- Storage Bar Section -->
-        <div class="p-3 border-t border-dark-800 text-xs text-zinc-400 space-y-2">
-            <div class="flex justify-between items-center text-[11px]">
-                <span class="text-zinc-400">Storage Usage</span>
-                <span id="storageText" class="text-zinc-300 font-mono">0.02 GB / 2.00 GB</span>
-            </div>
-            <div class="w-full bg-dark-950 h-1.5 rounded-full overflow-hidden border border-dark-700">
-                <div id="storageBar" class="bg-zinc-300 h-full rounded-full transition-all duration-300" style="width: 1%;"></div>
-            </div>
-            <div class="text-[10px] text-zinc-600 text-center">Max limit: 100 chats</div>
-        </div>
-    </aside>
-
-    <!-- MAIN CHAT AREA SECTION -->
-    <main class="flex-1 flex flex-col h-full bg-dark-950 relative overflow-hidden">
-        <!-- Top Navbar -->
-        <header class="h-14 border-b border-dark-800 flex items-center justify-between px-4 bg-dark-900/50 backdrop-blur z-10">
-            <div class="flex items-center gap-3">
-                <button onclick="toggleSidebar()" class="md:hidden text-zinc-400 hover:text-white p-2">
-                    <i class="fa-solid fa-bars"></i>
-                </button>
-                <h1 id="currentChatTitle" class="font-semibold text-sm tracking-wide text-zinc-200">Parasite A.I</h1>
-            </div>
-        </header>
-
-        <!-- Messages Scroll Area -->
-        <div id="chatContainer" class="flex-1 overflow-y-auto px-4 py-6 space-y-6 flex flex-col items-center">
-            <!-- Welcome screen if no messages -->
-            <div id="welcomeScreen" class="my-auto text-center max-w-md mx-auto space-y-4 px-4">
-                <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-zinc-200 via-white to-zinc-400 ai-orb-pulse flex items-center justify-center mx-auto text-zinc-950 text-sm shadow-[0_0_15px_rgba(255,255,255,0.25)]">
-                    <div class="w-3 h-3 rounded-full bg-zinc-900/20 blur-[1px]"></div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-neutral-400 mb-1">Additional Details</label>
+                    <textarea id="report-details" placeholder="Provide context or links..." class="w-full bg-inputbg border border-bordercolor rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accentcolor transition h-20 resize-none"></textarea>
                 </div>
-                <h2 class="text-xl font-semibold tracking-tight text-white">What are we talking about today?</h2>
-                <p class="text-sm text-zinc-500 leading-relaxed">Ask anything or start a conversation.</p>
+                <div class="flex justify-end gap-3">
+                    <button type="button" onclick="closeReportModal()" class="px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white rounded-lg text-sm font-medium transition">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-danger hover:bg-opacity-90 text-white rounded-lg text-sm font-medium transition">Submit Report</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="friend-request-popup" class="fixed bottom-6 right-6 z-50 hidden bg-cardbg border border-accentcolor rounded-xl p-4 shadow-2xl max-w-sm w-full animate-bounce">
+        <div class="flex items-center gap-3">
+            <div id="fr-popup-avatar" class="w-10 h-10 rounded-full bg-neutral-700 overflow-hidden flex items-center justify-center font-bold text-white"></div>
+            <div class="flex-1 min-w-0">
+                <p class="text-xs font-semibold text-white">New Friend Request</p>
+                <p id="fr-popup-text" class="text-xs text-neutral-400 truncate"></p>
             </div>
         </div>
+        <div class="flex gap-2 mt-3">
+            <button onclick="acceptPendingFriendRequest()" class="flex-1 bg-success hover:bg-opacity-80 text-white text-xs py-1.5 rounded font-medium transition">Accept</button>
+            <button onclick="declinePendingFriendRequest()" class="flex-1 bg-danger hover:bg-opacity-80 text-white text-xs py-1.5 rounded font-medium transition">Decline</button>
+        </div>
+    </div>
 
-        <!-- Input Box Area with Typing Indicator & Reply Banner -->
-        <div class="p-4 bg-dark-950 border-t border-dark-800/60 flex flex-col items-center">
-            <div class="w-full max-w-3xl">
-                <!-- Reply Banner -->
-                <div id="replyBanner" class="hidden mb-2 bg-dark-900 border border-orange-500/30 rounded-xl px-3 py-2 text-xs flex items-center justify-between text-zinc-300">
-                    <div class="flex items-center gap-2 truncate">
-                        <i class="fa-solid fa-reply text-orange-400"></i>
-                        <span class="text-zinc-400">Replying to <strong id="replyingToUser" class="text-orange-300 font-mono"></strong>:</span>
-                        <span id="replyingToText" class="truncate text-zinc-400 italic"></span>
+    <div id="profile-modal" class="fixed inset-0 bg-black/70 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-cardbg border border-bordercolor rounded-2xl max-w-md w-full overflow-hidden shadow-2xl relative">
+            <div id="profile-banner" class="h-32 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 relative">
+                <button onclick="closeProfileModal()" class="absolute top-3 right-3 bg-black/50 hover:bg-black text-white w-8 h-8 rounded-full flex items-center justify-center transition"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="px-6 pb-6 relative">
+                <div class="flex justify-between items-end -mt-10 mb-4">
+                    <div class="relative">
+                        <div id="profile-avatar" class="w-20 h-20 rounded-full border-4 border-cardbg bg-neutral-800 overflow-hidden flex items-center justify-center text-2xl font-bold text-white shadow-lg"></div>
+                        <div id="profile-status-dot" class="absolute bottom-1 right-1 w-4 h-4 rounded-full border-2 border-cardbg bg-success"></div>
                     </div>
-                    <button onclick="cancelReply()" class="text-zinc-500 hover:text-zinc-200 p-1">
-                        <i class="fa-solid fa-xmark"></i>
-                    </button>
+                    <div id="profile-actions" class="flex gap-2"></div>
                 </div>
+                <div class="flex items-center gap-2 mb-1">
+                    <h3 id="profile-displayname" class="text-lg font-bold text-white"></h3>
+                    <span id="profile-status-badge" class="px-2 py-0.5 rounded text-[10px] font-semibold bg-success/20 text-success">Online</span>
+                </div>
+                <p id="profile-username" class="text-xs text-neutral-400 mb-4"></p>
+                <div class="bg-inputbg p-3 rounded-xl border border-bordercolor">
+                    <p class="text-[10px] uppercase font-semibold text-neutral-400 mb-1">About Me</p>
+                    <p id="profile-bio" class="text-xs text-neutral-200 italic">No bio provided yet.</p>
+                </div>
+            </div>
+        </div>
+    </div>
 
-                <!-- Typing Indicator Container -->
-                <div id="typingIndicator" class="hidden pb-3 flex flex-col gap-1">
-                    <div class="flex items-center gap-3 text-zinc-400 text-sm">
-                        <div class="w-4 h-4 rounded-full bg-gradient-to-tr from-zinc-200 via-white to-zinc-400 ai-orb-pulse flex items-center justify-center text-zinc-950 text-[10px] shrink-0 shadow-[0_0_10px_rgba(255,255,255,0.2)]"></div>
-                        <div class="bg-dark-900 border border-dark-800 px-4 py-3 rounded-2xl rounded-tl-sm flex items-center gap-1.5 shadow-sm">
-                            <div class="w-2 h-2 rounded-full bg-zinc-400 typing-dot"></div>
-                            <div class="w-2 h-2 rounded-full bg-zinc-400 typing-dot"></div>
-                            <div class="w-2 h-2 rounded-full bg-zinc-400 typing-dot"></div>
+    <div id="settings-modal" class="fixed inset-0 bg-black/70 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-cardbg border border-bordercolor rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl relative flex flex-col max-h-[90vh]">
+            <div class="p-4 border-b border-bordercolor flex items-center justify-between bg-neutral-900/40">
+                <h3 class="text-sm font-bold text-white uppercase tracking-wider"><i class="fa-solid fa-gear mr-2 text-accentcolor"></i> User Settings</h3>
+                <button onclick="closeSettingsModal()" class="text-neutral-400 hover:text-white p-1 transition"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-6 overflow-y-auto space-y-6 flex-1">
+                <form id="settings-form" onsubmit="saveSettings(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase text-neutral-400 mb-1">Display Name</label>
+                        <input type="text" id="settings-displayname" required class="w-full bg-inputbg border border-bordercolor rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-accentcolor transition">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold uppercase text-neutral-400 mb-1">Profile Picture</label>
+                        <div class="flex items-center gap-4">
+                            <div id="settings-pfp-preview" class="w-12 h-12 rounded-full bg-neutral-800 border border-bordercolor flex items-center justify-center overflow-hidden text-neutral-400 font-bold text-lg"></div>
+                            <input type="file" id="settings-pfp-file" accept="image/*" onchange="handleSettingsImageCrop(event)" class="text-xs text-neutral-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-neutral-700 file:text-white hover:file:bg-neutral-600 cursor-pointer">
                         </div>
                     </div>
-                    <!-- Busy Server Notice -->
-                    <div id="busyServerNotice" class="hidden pl-7 text-[11px] text-amber-400/80 italic font-mono">
-                        ⚠️ Servers are currently busy, generating response...
+                    <div>
+                        <label class="block text-xs font-semibold uppercase text-neutral-400 mb-1">Banner Style</label>
+                        <select id="settings-banner" class="w-full bg-inputbg border border-bordercolor rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-accentcolor transition">
+                            <option value="from-blue-600 via-indigo-600 to-purple-600">Ocean Indigo</option>
+                            <option value="from-emerald-600 via-teal-600 to-cyan-600">Emerald Cyan</option>
+                            <option value="from-amber-600 via-orange-600 to-red-600">Sunset Orange</option>
+                            <option value="from-pink-600 via-rose-600 to-purple-600">Neon Rose</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold uppercase text-neutral-400 mb-1">Bio</label>
+                        <textarea id="settings-bio" class="w-full bg-inputbg border border-bordercolor rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accentcolor transition h-20 resize-none"></textarea>
+                    </div>
+                    <button type="submit" class="w-full bg-accentcolor text-white font-semibold rounded-lg py-2.5 text-sm hover:bg-opacity-90 transition">Save Changes</button>
+                </form>
+
+                <div class="border-t border-bordercolor pt-4 space-y-2">
+                    <p class="text-[10px] uppercase font-semibold text-neutral-400 mb-2">Account Actions</p>
+                    <div class="flex gap-3">
+                        <button onclick="switchAccount()" class="flex-1 bg-neutral-700 hover:bg-neutral-600 text-white py-2 rounded-lg text-xs font-medium transition"><i class="fa-solid fa-users mr-1"></i> Switch Account</button>
+                        <button onclick="logout()" class="flex-1 bg-danger hover:bg-opacity-80 text-white py-2 rounded-lg text-xs font-medium transition"><i class="fa-solid fa-right-from-bracket mr-1"></i> Log Out</button>
                     </div>
                 </div>
-
-                <form id="chatForm" onsubmit="handleFormSubmit(event)" class="relative flex items-end bg-dark-900 border border-dark-700 rounded-2xl focus-within:border-zinc-500 transition-colors shadow-lg">
-                    <textarea 
-                        id="userInput" 
-                        rows="1" 
-                        placeholder="Message Parasite A.I..." 
-                        class="w-full bg-transparent text-zinc-100 placeholder-zinc-500 text-sm px-4 py-3.5 focus:outline-none resize-none max-h-36 overflow-y-auto"
-                        onkeydown="handleKeydown(event)"
-                        oninput="autoResize(this)"
-                    ></textarea>
-                    <button 
-                        type="submit" 
-                        id="actionButton"
-                        class="m-2 bg-zinc-100 hover:bg-white text-zinc-950 p-2.5 rounded-xl transition-all flex items-center justify-center w-9 h-9 shadow-sm"
-                        title="Send Message"
-                    >
-                        <i id="actionButtonIcon" class="fa-solid fa-arrow-up text-xs"></i>
-                    </button>
-                </form>
-                <div id="footerDisclaimer" class="text-center mt-2 text-[11px] text-zinc-600">
-                    Parasite A.I can make mistakes. Verify critical info.
-                </div>
-            </div>
-        </div>
-    </main>
-
-    <!-- CUSTOM MODAL OVERLAY -->
-    <div id="customModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-dark-900 border border-dark-700 w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4">
-            <h3 id="modalTitle" class="text-lg font-semibold text-white"></h3>
-            <p id="modalMessage" class="text-sm text-zinc-400 hidden"></p>
-            <div id="modalInputContainer" class="hidden">
-                <input type="text" id="modalInput" class="w-full bg-dark-950 border border-dark-700 rounded-xl px-4 py-2.5 text-sm text-zinc-100 focus:outline-none focus:border-zinc-500">
-            </div>
-            <div class="flex justify-end gap-3 pt-2">
-                <button id="modalCancelBtn" class="px-4 py-2 rounded-xl text-sm font-medium text-zinc-400 hover:text-white bg-dark-800 hover:bg-zinc-700 transition-colors">Cancel</button>
-                <button id="modalConfirmBtn" class="px-4 py-2 rounded-xl text-sm font-medium bg-zinc-100 hover:bg-white text-zinc-950 transition-colors">Confirm</button>
             </div>
         </div>
     </div>
 
-    <!-- FIREBASE AND APP LOGIC SCRIPT -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, query, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    <div id="auth-view" class="fixed inset-0 bg-darkbg z-40 flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-cardbg border border-bordercolor rounded-2xl max-w-md w-full p-8 shadow-2xl my-auto">
+            <div class="text-center mb-6">
+                <h1 class="text-2xl font-bold tracking-wider text-white uppercase">Chat 2.0</h1>
+                <p class="text-xs text-neutral-400 mt-1">Secure Global Communications Network</p>
+            </div>
 
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-            apiKey: "AIzaSyDummyKey",
-            authDomain: "dummy.firebaseapp.com",
-            projectId: "dummy",
-            storageBucket: "dummy.appspot.com",
-            messagingSenderId: "123456789",
-            appId: "1:123:web:123"
+            <div id="saved-accounts-section" class="mb-6 hidden">
+                <label class="block text-xs font-semibold uppercase text-neutral-400 mb-2">Saved Accounts</label>
+                <div id="saved-accounts-list" class="space-y-2 max-h-40 overflow-y-auto pr-1"></div>
+                <div class="border-b border-bordercolor my-4"></div>
+            </div>
+
+            <form id="auth-form" onsubmit="handleAuth(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-neutral-400 mb-1">Username</label>
+                    <input type="text" id="auth-username" required placeholder="alphanumeric, 3-20 chars" 
+                           class="w-full bg-inputbg border border-bordercolor rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-accentcolor transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-neutral-400 mb-1">Display Name</label>
+                    <input type="text" id="auth-displayname" required placeholder="Your Public Name" 
+                           class="w-full bg-inputbg border border-bordercolor rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-accentcolor transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-neutral-400 mb-1">Password</label>
+                    <input type="password" id="auth-password" required placeholder="8+ chars, upper/lower/number/symbol" 
+                           class="w-full bg-inputbg border border-bordercolor rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-accentcolor transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-neutral-400 mb-1">Profile Picture</label>
+                    <div class="flex items-center gap-4">
+                        <div id="pfp-preview" class="w-12 h-12 rounded-full bg-neutral-800 border border-bordercolor flex items-center justify-center overflow-hidden text-neutral-400 font-bold text-lg">
+                            <i class="fa-solid fa-user"></i>
+                        </div>
+                        <input type="file" id="auth-pfp" accept="image/*" onchange="handleImageCrop(event)" class="text-xs text-neutral-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-neutral-700 file:text-white hover:file:bg-neutral-600 cursor-pointer">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-neutral-400 mb-1">Bio</label>
+                    <textarea id="auth-bio" placeholder="Tell us about yourself..." class="w-full bg-inputbg border border-bordercolor rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-accentcolor transition h-16 resize-none"></textarea>
+                </div>
+                <button type="submit" class="w-full mt-2 bg-accentcolor text-white font-semibold rounded-lg py-3 text-sm hover:bg-opacity-90 transition">
+                    Sign In / Register
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div id="chat-view" class="flex-1 flex h-full hidden overflow-hidden">
+        <!-- Sidebar Navigation -->
+        <div class="w-64 bg-cardbg border-r border-bordercolor flex flex-col">
+            <div class="h-14 border-b border-bordercolor px-4 flex items-center justify-between">
+                <span class="text-xs font-bold tracking-wider text-white uppercase">Chat 2.0</span>
+                <div class="flex items-center gap-2">
+                    <div class="relative">
+                        <div id="current-user-avatar" class="w-7 h-7 rounded-full bg-neutral-700 flex items-center justify-center text-[10px] font-bold overflow-hidden text-white cursor-pointer" onclick="openProfileModal(window.currentUser.username)"></div>
+                        <div id="current-user-status-dot" class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-cardbg bg-success"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation Tabs -->
+            <div class="p-3 space-y-1">
+                <button onclick="switchTab('global')" id="tab-global" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-white bg-inputbg transition">
+                    <i class="fa-solid fa-globe w-4 text-center"></i> Global Chat
+                </button>
+                <button onclick="switchTab('friends')" id="tab-friends" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-neutral-400 hover:text-white hover:bg-inputbg/50 transition">
+                    <i class="fa-solid fa-user-group w-4 text-center"></i> Friends & DMs
+                </button>
+            </div>
+
+            <!-- Friends List Sidebar in Friends Tab -->
+            <div id="sidebar-friends-section" class="flex-1 overflow-y-auto p-3 hidden space-y-1">
+                <p class="text-[10px] font-bold uppercase text-neutral-400 px-2 mb-1">Direct Messages</p>
+                <div id="sidebar-friends-list" class="space-y-1"></div>
+            </div>
+
+            <!-- User Footer Bar -->
+            <div class="p-3 border-t border-bordercolor flex items-center justify-between bg-neutral-900/40">
+                <div class="flex items-center gap-2 min-w-0">
+                    <div class="relative shrink-0 cursor-pointer" onclick="openProfileModal(window.currentUser.username)">
+                        <div id="footer-avatar" class="w-8 h-8 rounded-full bg-neutral-700 overflow-hidden flex items-center justify-center text-xs font-bold text-white"></div>
+                        <div id="footer-status-dot" class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-cardbg bg-success"></div>
+                    </div>
+                    <div class="min-w-0">
+                        <p id="footer-displayname" class="text-xs font-semibold text-white truncate cursor-pointer" onclick="openProfileModal(window.currentUser.username)"></p>
+                        <select id="status-selector" onchange="changeUserStatus(this.value)" class="bg-transparent text-[10px] text-neutral-400 focus:outline-none cursor-pointer">
+                            <option value="online" class="bg-cardbg text-white">Online</option>
+                            <option value="idle" class="bg-cardbg text-white">Idle</option>
+                            <option value="offline" class="bg-cardbg text-white">Offline</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex items-center gap-1">
+                    <button onclick="openSettingsModal()" title="Settings" class="text-neutral-400 hover:text-white p-1.5 transition text-xs"><i class="fa-solid fa-gear"></i></button>
+                    <button onclick="logout()" title="Log Out" class="text-danger hover:text-opacity-80 p-1.5 transition text-xs"><i class="fa-solid fa-right-from-bracket"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="flex-1 flex flex-col h-full bg-darkbg overflow-hidden relative">
+            <!-- Global Chat Panel -->
+            <div id="panel-global" class="flex-1 flex flex-col h-full">
+                <header class="h-14 border-b border-bordercolor bg-cardbg px-6 flex items-center justify-between z-10">
+                    <h2 class="text-sm font-bold tracking-wide text-white flex items-center gap-2"><i class="fa-solid fa-hashtag text-neutral-400"></i> global-channel</h2>
+                </header>
+                <div id="chat-messages" class="flex-1 overflow-y-auto p-6 space-y-4"></div>
+                
+                <!-- Reply Preview Banner -->
+                <div id="reply-banner" class="hidden bg-cardbg border-t border-bordercolor px-6 py-2 flex items-center justify-between text-xs text-neutral-400">
+                    <div class="flex items-center gap-2 truncate">
+                        <i class="fa-solid fa-reply text-orangereply"></i>
+                        <span>Replying to <strong id="reply-to-user" class="text-white"></strong>: <span id="reply-to-text" class="italic truncate"></span></span>
+                    </div>
+                    <button onclick="cancelReply()" class="text-neutral-500 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+
+                <div class="p-4 bg-cardbg border-t border-bordercolor">
+                    <div class="flex items-center gap-1.5 mb-2 px-1">
+                        <button type="button" onclick="formatText('**', '**')" title="Bold" class="px-2.5 py-1 bg-inputbg hover:bg-neutral-600 text-xs text-neutral-300 rounded font-bold border border-bordercolor transition">B</button>
+                        <button type="button" onclick="formatText('*', '*')" title="Italic" class="px-2.5 py-1 bg-inputbg hover:bg-neutral-600 text-xs text-neutral-300 rounded italic border border-bordercolor transition">I</button>
+                        <button type="button" onclick="formatText('<u>', '</u>')" title="Underline" class="px-2.5 py-1 bg-inputbg hover:bg-neutral-600 text-xs text-neutral-300 rounded underline border border-bordercolor transition">U</button>
+                        <button type="button" onclick="formatText('`', '`')" title="Code" class="px-2.5 py-1 bg-inputbg hover:bg-neutral-600 text-xs text-neutral-300 rounded font-mono border border-bordercolor transition">&lt;/&gt;</button>
+                    </div>
+                    <form onsubmit="sendMessage(event)" class="flex gap-3">
+                        <input type="text" id="message-input" autocomplete="off" placeholder="Message #global-channel" 
+                               class="flex-1 bg-inputbg border border-bordercolor rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-accentcolor transition">
+                        <button type="submit" class="bg-accentcolor text-white font-medium px-6 py-3 rounded-xl text-sm hover:bg-opacity-90 transition flex items-center justify-center">
+                            <i class="fa-solid fa-paper-plane"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Friends & DMs Panel -->
+            <div id="panel-friends" class="flex-1 flex h-full hidden">
+                <div class="w-80 border-r border-bordercolor bg-cardbg flex flex-col p-4">
+                    <h3 class="text-xs font-bold uppercase text-neutral-400 mb-3">Friends & Requests</h3>
+                    <div class="space-y-4 overflow-y-auto flex-1 pr-1">
+                        <div>
+                            <p class="text-[10px] uppercase font-semibold text-neutral-500 mb-2">Pending Requests</p>
+                            <div id="friend-requests-container" class="space-y-2">
+                                <p class="text-xs text-neutral-500 italic">No pending requests.</p>
+                            </div>
+                        </div>
+                        <div>
+                            <p class="text-[10px] uppercase font-semibold text-neutral-500 mb-2">All Friends</p>
+                            <div id="friends-list-container" class="space-y-2">
+                                <p class="text-xs text-neutral-500 italic">No friends added yet.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- DM Chat Window -->
+                <div id="dm-chat-area" class="flex-1 flex flex-col h-full hidden">
+                    <header class="h-14 border-b border-bordercolor bg-cardbg px-6 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div id="dm-header-avatar" class="w-8 h-8 rounded-full bg-neutral-700 overflow-hidden flex items-center justify-center text-xs font-bold text-white cursor-pointer"></div>
+                            <div>
+                                <h3 id="dm-header-name" class="text-sm font-bold text-white cursor-pointer"></h3>
+                                <p class="text-[10px] text-neutral-400">Direct Message</p>
+                            </div>
+                        </div>
+                    </header>
+                    <div id="dm-messages" class="flex-1 overflow-y-auto p-6 space-y-4"></div>
+                    <div class="p-4 bg-cardbg border-t border-bordercolor">
+                        <form onsubmit="sendDmMessage(event)" class="flex gap-3">
+                            <input type="text" id="dm-input" autocomplete="off" placeholder="Type a private message..." 
+                                   class="flex-1 bg-inputbg border border-bordercolor rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-accentcolor transition">
+                            <button type="submit" class="bg-accentcolor text-white font-medium px-6 py-3 rounded-xl text-sm hover:bg-opacity-90 transition flex items-center justify-center">
+                                <i class="fa-solid fa-paper-plane"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <div id="dm-placeholder" class="flex-1 flex flex-col items-center justify-center p-6 text-center text-neutral-500">
+                    <i class="fa-solid fa-comments text-4xl mb-2"></i>
+                    <p class="text-sm">Select a friend to start chatting privately.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+        import {
+            getDatabase,
+            ref,
+            push,
+            onChildAdded,
+            onValue,
+            get,
+            set,
+            remove,
+            child,
+            off
+        } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCDQWNVbjxxscF-hpqHTdJFTymmkCYmJDU",
+            authDomain: "global-chat-17cb7.firebaseapp.com",
+            databaseURL: "https://global-chat-17cb7-default-rtdb.firebaseio.com",
+            projectId: "global-chat-17cb7",
+            storageBucket: "global-chat-17cb7.firebasestorage.app",
+            messagingSenderId: "234740635611",
+            appId: "1:234740635611:web:0f15edb0b68da86ab8f9fe"
         };
 
         const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
+        const db = getDatabase(app, "https://global-chat-17cb7-default-rtdb.firebaseio.com");
 
-        let currentUser = null;
-        let globalMessages = [];
+        window.dbInstance = db;
+        window.currentUser = null;
+        window.croppedBase64Image = null;
+        window.settingsCroppedBase64 = null;
+        window.activeReplyData = null;
+        window.activeDmFriend = null;
+        window.queuedFriendPopups = [];
+        window.currentPendingRequestFrom = null;
+        window.reportTargetUsername = null;
+        window.activeDmRef = null;
+        window.allUsers = {}; // Cache for live user profiles
 
-        // Expose variables & methods globally so UI functions can interact with Firebase
-        window.firebaseDb = db;
-        window.appId = appId;
-        window.globalMessages = globalMessages;
+        let lastMessageTimes = [];
+        let idleTimer = null;
+        let isManualIdle = false;
 
-        async function initAuth() {
-            try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-            } catch (err) {
-                console.error("Auth error:", err);
+        window.addEventListener('DOMContentLoaded', () => {
+            if ('Notification' in window && Notification.permission !== 'granted') {
+                Notification.requestPermission().catch(() => {});
+            }
+            renderSavedAccounts();
+            const savedSession = localStorage.getItem('chat2_session');
+            if (savedSession) {
                 try {
-                    await signInAnonymously(auth);
+                    window.currentUser = JSON.parse(savedSession);
+                    initChatUI();
                 } catch (e) {
-                    console.error("Anonymous auth failed:", e);
+                    localStorage.removeItem('chat2_session');
                 }
             }
-
-            onAuthStateChanged(auth, (user) => {
-                if (user) {
-                    currentUser = user;
-                    window.currentUserId = user.uid;
-                    setupGlobalListener(user.uid);
-                }
+            // Listen to all users globally for profile/name sync
+            onValue(ref(db, 'users'), (snapshot) => {
+                window.allUsers = snapshot.val() || {};
             });
-        }
+        });
 
-        function setupGlobalListener(uid) {
-            if (!uid) return;
-            const messagesRef = collection(db, 'artifacts', appId, 'public', 'data', 'global_messages');
-            
-            // Listen in real-time via onSnapshot with error callback
-            onSnapshot(messagesRef, (snapshot) => {
-                const fetchedMessages = [];
-                snapshot.forEach((docSnap) => {
-                    const data = docSnap.data();
-                    data.id = docSnap.id;
-                    fetchedMessages.push(data);
-                });
-                
-                // Sort in memory by timestamp
-                fetchedMessages.sort((a, b) => (a.created_at || 0) - (b.created_at || 0));
-                window.globalMessages = fetchedMessages;
-
-                if (window.currentView === 'global') {
-                    window.renderGlobalMessages();
-                }
-            }, (error) => {
-                console.error("Firestore snapshot error:", error);
-            });
-        }
-
-        window.sendGlobalMessageToFirestore = async function(messageObj) {
-            if (!auth.currentUser) return;
+        window.changeUserStatus = async function(status) {
+            if (!window.currentUser) return;
+            window.currentUser.status = status;
+            isManualIdle = (status === 'idle');
+            localStorage.setItem('chat2_session', JSON.stringify(window.currentUser));
             try {
-                const messagesRef = collection(db, 'artifacts', appId, 'public', 'data', 'global_messages');
-                await addDoc(messagesRef, messageObj);
-            } catch (e) {
-                console.error("Error sending message to Firestore:", e);
-            }
-        };
-
-        initAuth();
-    </script>
-
-    <script>
-        const API_CONFIG = {
-            apiKey: "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",
-            model: "openrouter/auto",
-            endpoint: "https://openrouter.ai/api/v1/chat/completions",
-            systemPrompt: "You are Parasite A.I, an intelligent academic assistant. You ONLY help with mathematics, formal academic studies, science explanations, homework, and general conversations. You are extremely strict and uncompromising: you MUST REFUSE to help with ANY coding, programming, software development, debugging, script-writing, or code-related questions under any circumstances. If a user asks anything about code, politely refuse and remind them you only handle math and study topics."
-        };
-
-        // Anonymous session ID
-        let myUserId = localStorage.getItem('parasite_user_id');
-        if (!myUserId) {
-            myUserId = 'user_' + Math.random().toString(36).substring(2, 10);
-            localStorage.setItem('parasite_user_id', myUserId);
+                await set(ref(db, `users/${window.currentUser.username}/status`), status);
+            } catch (e) { console.error(e); }
+            updateStatusUI(status);
         }
 
-        let currentView = 'ai';
-        let chats = JSON.parse(localStorage.getItem('parasite_chats')) || [];
-        let currentChatId = localStorage.getItem('parasite_current_chat') || null;
-        let isGenerating = false;
-        let abortController = null;
-        let busyServerTimer = null;
-        let replyingTo = null;
-
-        // PROFANITY FILTER
-        const badWordsList = [
-            'damn', 'hell', 'crap', 'fuck', 'shit', 'bitch', 'ass', 'bastard', 'dick', 'piss', 'cunt', 'slut', 'whore',
-            'shut up', 'idiot', 'stupid', 'dumb', 'trash', 'useless', 'moron', 'suck',
-            'kys', 'kill yourself', 'retard', 'fag', 'faggot', 'nigger', 'nigga', 'tranny', 'chink', 'spic', 'kike',
-            'loser', 'ugly', 'fat', 'worthless', 'die', 'jerk', 'asshole', 'dickhead', 'motherfucker',
-            'psycho', 'freak', 'scum', 'pussy', 'cock', 'twat', 'cunt'
-        ];
-
-        function filterProfanity(text) {
-            if (!text) return text;
-            let filtered = text;
-            badWordsList.forEach(word => {
-                const regex = new RegExp(`\\b${word}\\b`, 'gi');
-                filtered = filtered.replace(regex, '***');
-                if (word.length > 4) {
-                    const subRegex = new RegExp(word, 'gi');
-                    filtered = filtered.replace(subRegex, '***');
-                }
+        function updateStatusUI(status) {
+            const dots = [document.getElementById('current-user-status-dot'), document.getElementById('footer-status-dot')];
+            dots.forEach(dot => {
+                if (!dot) return;
+                dot.className = 'absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-cardbg';
+                if (status === 'online') dot.classList.add('bg-success');
+                else if (status === 'idle') dot.classList.add('bg-idlecolor');
+                else dot.classList.add('bg-offlinecolor');
             });
-            return filtered;
+            const selector = document.getElementById('status-selector');
+            if (selector) selector.value = status;
         }
 
-        let moderationData = JSON.parse(localStorage.getItem('parasite_moderation')) || {
-            warnings: 0,
-            lastWarningTime: null,
-            bannedUntil: null
-        };
+        function resetIdleTimer() {
+            if (!window.currentUser) return;
+            clearTimeout(idleTimer);
+            idleTimer = setTimeout(() => {
+                if (window.currentUser && window.currentUser.status === 'online' && !isManualIdle) {
+                    window.changeUserStatus('idle');
+                }
+            }, 15 * 60 * 1000);
+        }
 
-        function checkAndResetWarnings() {
-            const now = Date.now();
-            const ONE_DAY = 24 * 60 * 60 * 1000;
-            if (moderationData.lastWarningTime && (now - moderationData.lastWarningTime > ONE_DAY)) {
-                if (!moderationData.bannedUntil) {
-                    moderationData.warnings = 0;
-                    moderationData.lastWarningTime = null;
-                    saveModerationState();
+        window.addEventListener('mousemove', resetIdleTimer);
+        window.addEventListener('keydown', resetIdleTimer);
+        window.addEventListener('click', resetIdleTimer);
+
+        async function checkAutoMod(text) {
+            if (!window.currentUser) return null;
+
+            const userSnap = await get(ref(db, `users/${window.currentUser.username}/mute`));
+            if (userSnap.exists()) {
+                const muteData = userSnap.val();
+                if (muteData.endTime > Date.now()) {
+                    const mins = Math.ceil((muteData.endTime - Date.now()) / 60000);
+                    return `You are currently muted for ${mins} more minutes. Reason: ${muteData.reason}`;
                 }
             }
-        }
 
-        function saveModerationState() {
-            localStorage.setItem('parasite_moderation', JSON.stringify(moderationData));
-            updateWarningDisplay();
-        }
-
-        function updateWarningDisplay() {
-            const badgeContainer = document.getElementById('warningBadgeContainer');
-            const countDisplay = document.getElementById('warningCountDisplay');
-            if (moderationData.warnings > 0) {
-                badgeContainer.classList.remove('hidden');
-                countDisplay.innerText = `${moderationData.warnings} / 5`;
-            } else {
-                badgeContainer.classList.add('hidden');
+            const now = Date.now();
+            lastMessageTimes = lastMessageTimes.filter(t => now - t < 5000);
+            lastMessageTimes.push(now);
+            if (lastMessageTimes.length > 4) {
+                return await applyMute(10 * 60 * 1000, 'Spamming');
             }
-        }
 
-        function checkSlursOrBullying(text) {
             const lower = text.toLowerCase();
-            return badWordsList.some(item => {
-                if (item.length <= 4) {
-                    const regex = new RegExp(`\\b${item}\\b`, 'i');
-                    return regex.test(lower);
-                } else {
-                    return lower.includes(item);
+            const slurs = ['slur1', 'slur2', 'nword', 'fword'];
+            for (let s of slurs) {
+                if (lower.includes(s)) {
+                    return await applyMute(24 * 60 * 60 * 1000, 'Using slurs');
                 }
+            }
+
+            return null;
+        }
+
+        async function applyMute(baseDuration, reason) {
+            const userRef = ref(db, `users/${window.currentUser.username}`);
+            const snap = await get(userRef);
+            let userData = snap.val() || {};
+
+            let muteHistory = userData.muteHistory || { count: 0, lastMute: 0 };
+            if (Date.now() - muteHistory.lastMute > 86400000) muteHistory.count = 0;
+
+            muteHistory.count += 1;
+            muteHistory.lastMute = Date.now();
+
+            const extraMinutes = (muteHistory.count - 1) * 60000;
+            const totalDuration = baseDuration + extraMinutes;
+            const endTime = Date.now() + totalDuration;
+
+            await set(ref(db, `users/${window.currentUser.username}/mute`), { endTime, reason });
+            await set(ref(db, `users/${window.currentUser.username}/muteHistory`), muteHistory);
+
+            const durationReadable = totalDuration >= 86400000 ? '1 Day' : `${Math.ceil(totalDuration / 60000)} minutes`;
+
+            await push(ref(db, 'messages'), {
+                senderUsername: 'ModBot',
+                senderDisplayName: 'ModBot 🤖',
+                senderPfp: null,
+                text: `@${window.currentUser.username} was muted for ${durationReadable} (Reason: ${reason}).`,
+                timestamp: Date.now(),
+                isSystem: true
             });
+
+            return `Action blocked. You have been muted for ${durationReadable}. Reason: ${reason}`;
         }
 
-        function checkBanStatus() {
-            const now = Date.now();
-            if (moderationData.bannedUntil) {
-                if (now >= moderationData.bannedUntil) {
-                    moderationData.bannedUntil = null;
-                    moderationData.warnings = 0;
-                    saveModerationState();
-                    document.getElementById('banScreen').classList.add('hidden');
-                } else {
-                    document.getElementById('banScreen').classList.remove('hidden');
-                    const remainingHours = Math.ceil((moderationData.bannedUntil - now) / (1000 * 60 * 60));
-                    document.getElementById('banMessage').innerText = `You have been suspended for violating strict rules regarding slurs, bullying, and profanity. Access is restricted for ${remainingHours} more hours.`;
-                }
-            } else {
-                document.getElementById('banScreen').classList.add('hidden');
-            }
+        window.openReportModal = function(username) {
+            window.reportTargetUsername = username;
+            document.getElementById('report-target-name').innerText = '@' + username;
+            document.getElementById('report-details').value = '';
+            document.getElementById('report-modal').classList.remove('hidden');
         }
-
-        function checkUnbanPassword() {
-            const inputVal = document.getElementById('unbanPasswordInput').value.trim();
-            const errEl = document.getElementById('unbanError');
-            if (inputVal === "CANDYCANE") {
-                moderationData.bannedUntil = null;
-                moderationData.warnings = 0;
-                moderationData.lastWarningTime = null;
-                saveModerationState();
-                document.getElementById('banScreen').classList.add('hidden');
-                document.getElementById('unbanPasswordInput').value = '';
-                errEl.classList.add('hidden');
-            } else {
-                errEl.innerText = "Incorrect security bypass password. Access denied.";
-                errEl.classList.remove('hidden');
-            }
-        }
-
-        function openCustomModal({ title, message, showInput, inputValue, onConfirm }) {
-            const modal = document.getElementById('customModal');
-            const titleEl = document.getElementById('modalTitle');
-            const msgEl = document.getElementById('modalMessage');
-            const inputContainer = document.getElementById('modalInputContainer');
-            const inputEl = document.getElementById('modalInput');
-            const confirmBtn = document.getElementById('modalConfirmBtn');
-            const cancelBtn = document.getElementById('modalCancelBtn');
-
-            titleEl.innerText = title;
-            if (message) {
-                msgEl.innerText = message;
-                msgEl.classList.remove('hidden');
-            } else {
-                msgEl.classList.add('hidden');
-            }
-
-            if (showInput) {
-                inputContainer.classList.remove('hidden');
-                inputEl.value = inputValue || '';
-                setTimeout(() => inputEl.focus(), 50);
-            } else {
-                inputContainer.classList.add('hidden');
-            }
-
-            modal.classList.remove('hidden');
-
-            const newConfirmBtn = confirmBtn.cloneNode(true);
-            const newCancelBtn = cancelBtn.cloneNode(true);
-            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
-            cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
-
-            newConfirmBtn.onclick = () => {
-                modal.classList.add('hidden');
-                if (showInput) {
-                    onConfirm(inputEl.value);
-                } else {
-                    onConfirm(true);
-                }
-            };
-
-            newCancelBtn.onclick = () => {
-                modal.classList.add('hidden');
-            };
-
-            if (showInput) {
-                inputEl.onkeydown = (e) => {
-                    if (e.key === 'Enter') {
-                        newConfirmBtn.click();
-                    }
-                };
-            }
-        }
-
-        window.onload = function() {
-            checkAndResetWarnings();
-            checkBanStatus();
-
-            if (chats.length === 0) {
-                createNewChat(false);
-            } else {
-                if (!currentChatId || !chats.find(c => c.id === currentChatId)) {
-                    currentChatId = chats[0].id;
-                }
-                renderChatList();
-                loadCurrentChat();
-            }
-            updateStorageDisplay();
-            updateWarningDisplay();
-        };
-
-        function switchView(view) {
-            currentView = view;
-            window.currentView = view;
-            const aiBtn = document.getElementById('navAiBtn');
-            const globalBtn = document.getElementById('navGlobalBtn');
-            const aiActions = document.getElementById('aiHeaderActions');
-            const chatHistory = document.getElementById('chatHistoryList');
-            const globalInfo = document.getElementById('globalSidebarInfo');
-            const disclaimer = document.getElementById('footerDisclaimer');
-            const userInput = document.getElementById('userInput');
-
-            if (view === 'ai') {
-                aiBtn.className = "flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-semibold transition-colors bg-zinc-800 text-white border border-zinc-700";
-                globalBtn.className = "flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-semibold transition-colors bg-dark-950 text-zinc-400 hover:text-zinc-200 border border-dark-800";
-                aiActions.classList.remove('hidden');
-                chatHistory.classList.remove('hidden');
-                globalInfo.classList.add('hidden');
-                disclaimer.innerText = "Parasite A.I can make mistakes. Verify critical info.";
-                userInput.placeholder = "Message Parasite A.I...";
-                cancelReply();
-                loadCurrentChat();
-            } else {
-                globalBtn.className = "flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-semibold transition-colors bg-zinc-800 text-white border border-zinc-700";
-                aiBtn.className = "flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-semibold transition-colors bg-dark-950 text-zinc-400 hover:text-zinc-200 border border-dark-800";
-                aiActions.classList.add('hidden');
-                chatHistory.classList.add('hidden');
-                globalInfo.classList.remove('hidden');
-                document.getElementById('currentChatTitle').innerText = "Global Channel";
-                disclaimer.innerText = "Global Chat: Be respectful. Profanity is filtered.";
-                userInput.placeholder = "Send a message to everyone...";
-                renderGlobalMessages();
-            }
-            if (window.innerWidth < 768) toggleSidebar();
-        }
-
-        function saveState() {
-            localStorage.setItem('parasite_chats', JSON.stringify(chats));
-            localStorage.setItem('parasite_current_chat', currentChatId);
-            updateStorageDisplay();
-        }
-
-        function updateStorageDisplay() {
-            const dataString = JSON.stringify(chats);
-            const bytes = new Blob([dataString]).size;
-            const kb = bytes / 1024;
-            const simulatedGB = (0.01 + (kb / 1024) * 0.1).toFixed(2);
-            
-            document.getElementById('storageText').innerText = `${simulatedGB} GB / 2.00 GB`;
-            const percentage = Math.min(Math.max((chats.length / 100) * 100, 1), 100);
-            document.getElementById('storageBar').style.width = `${percentage}%`;
-        }
-
-        function createNewChat(selectNew = true) {
-            if (chats.length > 0) {
-                const currentChat = chats.find(c => c.id === currentChatId);
-                if (currentChat && currentChat.messages.length === 0) {
-                    return;
-                }
-            }
-
-            if (chats.length >= 100) {
-                openCustomModal({
-                    title: 'Storage Limit Reached',
-                    message: 'You have reached the maximum limit of 100 chats. Please delete some chats to create more.',
-                    showInput: false,
-                    onConfirm: () => {}
-                });
-                return;
-            }
-
-            const newChat = {
-                id: 'chat_' + Date.now(),
-                title: 'New Conversation',
-                messages: []
-            };
-            chats.unshift(newChat);
-            currentChatId = newChat.id;
-            saveState();
-            renderChatList();
-            loadCurrentChat();
-            if (window.innerWidth < 768) toggleSidebar();
-        }
-
-        function selectChat(id) {
-            currentChatId = id;
-            saveState();
-            renderChatList();
-            loadCurrentChat();
-            if (window.innerWidth < 768) toggleSidebar();
-        }
-
-        function renameChat(id, event) {
-            event.stopPropagation();
-            const chat = chats.find(c => c.id === id);
-            if (!chat) return;
-            openCustomModal({
-                title: 'Rename Chat',
-                showInput: true,
-                inputValue: chat.title,
-                onConfirm: (newTitle) => {
-                    if (newTitle && newTitle.trim() !== "") {
-                        chat.title = newTitle.trim();
-                        saveState();
-                        renderChatList();
-                        if (currentChatId === id) {
-                            document.getElementById('currentChatTitle').innerText = chat.title;
-                        }
-                    }
-                }
-            });
-        }
-
-        function deleteChat(id, event) {
-            event.stopPropagation();
-            if (chats.length <= 1) {
-                openCustomModal({
-                    title: 'Cannot Delete',
-                    message: 'You must keep at least one active conversation.',
-                    showInput: false,
-                    onConfirm: () => {}
-                });
-                return;
-            }
-            openCustomModal({
-                title: 'Delete Chat',
-                message: 'Are you sure you want to delete this conversation? This action cannot be undone.',
-                showInput: false,
-                onConfirm: () => {
-                    chats = chats.filter(c => c.id !== id);
-                    if (currentChatId === id) {
-                        currentChatId = chats[0].id;
-                    }
-                    saveState();
-                    renderChatList();
-                    loadCurrentChat();
-                }
-            });
-        }
-
-        function renderChatList() {
-            const listEl = document.getElementById('chatHistoryList');
-            listEl.innerHTML = '';
-            chats.forEach(chat => {
-                const isActive = chat.id === currentChatId;
-                const item = document.createElement('div');
-                item.className = `group flex items-center justify-between px-3 py-2.5 rounded-xl text-sm cursor-pointer transition-all ${isActive ? 'bg-zinc-800 text-white font-medium border border-zinc-700/50' : 'text-zinc-400 hover:bg-dark-800 hover:text-zinc-200'}`;
-                item.onclick = () => selectChat(chat.id);
-                
-                const titleSpan = document.createElement('span');
-                titleSpan.className = 'truncate flex-1 pr-2';
-                titleSpan.innerText = chat.title;
-
-                const actionsDiv = document.createElement('div');
-                actionsDiv.className = 'hidden group-hover:flex items-center gap-1.5';
-
-                const renameBtn = document.createElement('button');
-                renameBtn.className = 'p-1 text-zinc-400 hover:text-white';
-                renameBtn.innerHTML = '<i class="fa-solid fa-pen text-xs"></i>';
-                renameBtn.onclick = (e) => renameChat(chat.id, e);
-
-                const deleteBtn = document.createElement('button');
-                deleteBtn.className = 'p-1 text-zinc-400 hover:text-red-400';
-                deleteBtn.innerHTML = '<i class="fa-solid fa-trash text-xs"></i>';
-                deleteBtn.onclick = (e) => deleteChat(chat.id, e);
-
-                actionsDiv.appendChild(renameBtn);
-                actionsDiv.appendChild(deleteBtn);
-
-                item.appendChild(titleSpan);
-                item.appendChild(actionsDiv);
-                listEl.appendChild(item);
-            });
-        }
-
-        function loadCurrentChat() {
-            if (currentView !== 'ai') return;
-            const chat = chats.find(c => c.id === currentChatId);
-            if (!chat) return;
-            document.getElementById('currentChatTitle').innerText = chat.title;
-            const container = document.getElementById('chatContainer');
-            container.innerHTML = '';
-
-            if (chat.messages.length === 0) {
-                container.innerHTML = `
-                    <div id="welcomeScreen" class="my-auto text-center max-w-md mx-auto space-y-4 px-4">
-                        <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-zinc-200 via-white to-zinc-400 ai-orb-pulse flex items-center justify-center mx-auto text-zinc-950 text-sm shadow-[0_0_15px_rgba(255,255,255,0.25)]">
-                            <div class="w-3 h-3 rounded-full bg-zinc-900/20 blur-[1px]"></div>
-                        </div>
-                        <h2 class="text-xl font-semibold tracking-tight text-white">What are we talking about today?</h2>
-                        <p class="text-sm text-zinc-500 leading-relaxed">Ask anything or start a conversation.</p>
-                    </div>
-                `;
-                return;
-            }
-
-            chat.messages.forEach(msg => appendMessageElement(msg, container, false));
-            container.scrollTop = container.scrollHeight;
-        }
-
-        function renderGlobalMessages() {
-            if (currentView !== 'global') return;
-            const container = document.getElementById('chatContainer');
-            container.innerHTML = '';
-
-            if (!window.globalMessages || window.globalMessages.length === 0) {
-                container.innerHTML = `
-                    <div id="welcomeScreen" class="my-auto text-center max-w-md mx-auto space-y-4 px-4">
-                        <div class="w-8 h-8 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center mx-auto text-emerald-400 text-sm">
-                            <i class="fa-solid fa-globe"></i>
-                        </div>
-                        <h2 class="text-xl font-semibold tracking-tight text-white">Global Community Channel</h2>
-                        <p class="text-sm text-zinc-500 leading-relaxed">Be the first to say hello to everyone online!</p>
-                    </div>
-                `;
-                return;
-            }
-
-            window.globalMessages.forEach(msg => appendGlobalMessageElement(msg, container));
-            container.scrollTop = container.scrollHeight;
-        }
-
-        function appendMessageElement(msg, container, shouldScroll = true) {
-            const isUser = msg.role === 'user';
-            const wrapper = document.createElement('div');
-            wrapper.className = `w-full max-w-3xl flex gap-4 ${isUser ? 'justify-end' : 'justify-start'} mb-4`;
-
-            const inner = document.createElement('div');
-            inner.className = `flex gap-3 max-w-[85%] ${isUser ? 'flex-row-reverse' : 'flex-row'}`;
-
-            const avatar = document.createElement('div');
-            avatar.className = `w-7 h-7 rounded-full flex items-center justify-center text-xs shrink-0 ${isUser ? 'bg-zinc-700 text-zinc-200 font-bold' : 'bg-gradient-to-tr from-zinc-200 via-white to-zinc-400 text-zinc-950 font-bold shadow-sm'}`;
-            avatar.innerHTML = isUser ? '<i class="fa-solid fa-user text-[10px]"></i>' : '<i class="fa-solid fa-robot text-[10px]"></i>';
-
-            const bubble = document.createElement('div');
-            bubble.className = `px-4 py-3 rounded-2xl text-sm leading-relaxed ${isUser ? 'bg-zinc-800 text-zinc-100 rounded-tr-sm border border-zinc-700/50' : 'bg-dark-900 text-zinc-100 rounded-tl-sm border border-dark-800'}`;
-            
-            // Format newlines
-            bubble.innerHTML = escapeHtml(msg.content).replace(/\n/g, '<br>');
-
-            inner.appendChild(avatar);
-            inner.appendChild(bubble);
-            wrapper.appendChild(inner);
-            container.appendChild(wrapper);
-
-            if (shouldScroll) {
-                container.scrollTop = container.scrollHeight;
-            }
-        }
-
-        function appendGlobalMessageElement(msg, container) {
-            const isMyMsg = msg.sender_id === myUserId;
-            const wrapper = document.createElement('div');
-            wrapper.className = `w-full max-w-3xl flex gap-4 ${isMyMsg ? 'justify-end' : 'justify-start'} mb-4`;
-
-            const inner = document.createElement('div');
-            inner.className = `flex gap-3 max-w-[85%] ${isMyMsg ? 'flex-row-reverse' : 'flex-row'}`;
-
-            const avatar = document.createElement('div');
-            avatar.className = `w-7 h-7 rounded-full flex items-center justify-center text-xs shrink-0 bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 font-bold`;
-            avatar.innerHTML = '<i class="fa-solid fa-user text-[10px]"></i>';
-
-            const contentCol = document.createElement('div');
-            contentCol.className = `flex flex-col ${isMyMsg ? 'items-end' : 'items-start'} space-y-1`;
-
-            const senderLabel = document.createElement('span');
-            senderLabel.className = 'text-[11px] text-zinc-500 font-mono px-1';
-            senderLabel.innerText = msg.sender_name || 'Anonymous';
-
-            const bubble = document.createElement('div');
-            bubble.className = `px-4 py-3 rounded-2xl text-sm leading-relaxed ${isMyMsg ? 'bg-emerald-950/40 border border-emerald-500/30 text-emerald-100 rounded-tr-sm' : 'bg-dark-900 border border-dark-800 text-zinc-100 rounded-tl-sm'}`;
-            
-            if (msg.reply_to) {
-                const quoteDiv = document.createElement('div');
-                quoteDiv.className = 'mb-2 p-2 rounded-lg bg-black/30 border-l-2 border-orange-400 text-xs text-zinc-400';
-                quoteDiv.innerHTML = `<strong>@${escapeHtml(msg.reply_to.user)}:</strong> ${escapeHtml(msg.reply_to.text)}`;
-                bubble.appendChild(quoteDiv);
-            }
-
-            const textSpan = document.createElement('div');
-            textSpan.innerHTML = escapeHtml(msg.content).replace(/\n/g, '<br>');
-            bubble.appendChild(textSpan);
-
-            // Actions (Reply)
-            const actionsBar = document.createElement('div');
-            actionsBar.className = 'flex items-center gap-2 opacity-0 hover:opacity-100 transition-opacity px-1 text-[10px] text-zinc-500 pt-0.5';
-            
-            const replyBtn = document.createElement('button');
-            replyBtn.className = 'hover:text-zinc-300 flex items-center gap-1';
-            replyBtn.innerHTML = '<i class="fa-solid fa-reply"></i> Reply';
-            replyBtn.onclick = () => setReplyTo({ user: msg.sender_name || 'Anonymous', text: msg.content });
-            actionsBar.appendChild(replyBtn);
-
-            contentCol.appendChild(senderLabel);
-            contentCol.appendChild(bubble);
-            contentCol.appendChild(actionsBar);
-
-            inner.appendChild(avatar);
-            inner.appendChild(contentCol);
-            wrapper.appendChild(inner);
-            container.appendChild(wrapper);
-        }
-
-        function setReplyTo(info) {
-            replyingTo = info;
-            document.getElementById('replyingToUser').innerText = info.user;
-            document.getElementById('replyingToText').innerText = info.text;
-            document.getElementById('replyBanner').classList.remove('hidden');
-            document.getElementById('userInput').focus();
-        }
-
-        function cancelReply() {
-            replyingTo = null;
-            document.getElementById('replyBanner').classList.add('hidden');
-        }
-
-        function escapeHtml(text) {
-            if (!text) return '';
-            return text
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
-        }
-
-        function autoResize(textarea) {
-            textarea.style.height = 'auto';
-            textarea.style.height = Math.min(textarea.scrollHeight, 144) + 'px';
-        }
-
-        function handleKeydown(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                document.getElementById('chatForm').requestSubmit();
-            }
-        }
-
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const backdrop = document.getElementById('sidebarBackdrop');
-            sidebar.classList.toggle('-translate-x-full');
-            backdrop.classList.toggle('hidden');
-        }
-
-        async function handleFormSubmit(e) {
-            e.preventDefault();
-            const inputEl = document.getElementById('userInput');
-            const text = inputEl.value.trim();
-            if (!text || isGenerating) return;
-
-            inputEl.value = '';
-            inputEl.style.height = 'auto';
-
-            // Check profanity / slurs / bullying
-            if (checkSlursOrBullying(text)) {
-                moderationData.warnings++;
-                moderationData.lastWarningTime = Date.now();
-                if (moderationData.warnings >= 5) {
-                    moderationData.bannedUntil = Date.now() + (48 * 60 * 60 * 1000);
-                    saveModerationState();
-                    checkBanStatus();
-                    return;
-                } else {
-                    saveModerationState();
-                    openCustomModal({
-                        title: 'Warning: Community Guidelines',
-                        message: `Your message contained flagged slurs, profanity, or abusive bullying language. Warning ${moderationData.warnings} of 5. Continued violations will result in a 48-hour ban.`,
-                        showInput: false,
-                        onConfirm: () => {}
-                    });
-                    return;
-                }
-            }
-
-            const cleanText = filterProfanity(text);
-
-            if (currentView === 'global') {
-                // LOCAL FIRST UI UPDATE FOR INSTANT RESPONSIVENESS
-                const tempMsg = {
-                    sender_id: myUserId,
-                    sender_name: myUserId,
-                    content: cleanText,
-                    created_at: Date.now(),
-                    reply_to: replyingTo
-                };
-                
-                if (!window.globalMessages) window.globalMessages = [];
-                window.globalMessages.push(tempMsg);
-                renderGlobalMessages();
-                cancelReply();
-
-                // SYNC TO FIREBASE SERVER
-                if (window.sendGlobalMessageToFirestore) {
-                    window.sendGlobalMessageToFirestore(tempMsg);
-                }
-                return;
-            }
-
-            // AI CHAT VIEW
-            const chat = chats.find(c => c.id === currentChatId);
-            if (!chat) return;
-
-            const userMsg = { role: 'user', content: cleanText };
-            chat.messages.push(userMsg);
-            
-            if (chat.messages.length === 1) {
-                chat.title = cleanText.length > 28 ? cleanText.substring(0, 28) + '...' : cleanText;
-                renderChatList();
-            }
-
-            saveState();
-            loadCurrentChat();
-
-            // Trigger AI Generation
-            isGenerating = true;
-            const typingIndicator = document.getElementById('typingIndicator');
-            const busyNotice = document.getElementById('busyServerNotice');
-            typingIndicator.classList.remove('hidden');
-            
-            busyServerTimer = setTimeout(() => {
-                busyNotice.classList.remove('hidden');
-            }, 3000);
-
-            const icon = document.getElementById('actionButtonIcon');
-            icon.className = "fa-solid fa-square text-xs";
+        window.closeReportModal = () => document.getElementById('report-modal').classList.add('hidden');
+
+        window.submitUserReport = async function(event) {
+            event.preventDefault();
+            const reason = document.getElementById('report-reason').value;
+            const details = document.getElementById('report-details').value.trim();
+            const target = window.reportTargetUsername;
+
+            if (!target) return;
 
             try {
-                abortController = new AbortController();
-                const apiMessages = [
-                    { role: "system", content: API_CONFIG.systemPrompt },
-                    ...chat.messages.map(m => ({ role: m.role, content: m.content }))
-                ];
-
-                const response = await fetch(API_CONFIG.endpoint, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${API_CONFIG.apiKey}`,
-                        'HTTP-Referer': window.location.origin,
-                        'X-Title': 'Parasite A.I'
-                    },
-                    body: JSON.stringify({
-                        model: API_CONFIG.model,
-                        messages: apiMessages
-                    }),
-                    signal: abortController.signal
+                await push(ref(db, 'reports'), {
+                    reporter: window.currentUser.username,
+                    reportedUser: target,
+                    reason: reason,
+                    details: details,
+                    timestamp: Date.now()
                 });
-
-                if (!response.ok) {
-                    throw new Error(`Server returned status ${response.status}`);
-                }
-
-                const data = await response.json();
-                const replyContent = data.choices?.[0]?.message?.content || "I apologize, but I could not generate a response.";
-
-                chat.messages.push({ role: 'assistant', content: replyContent });
-                saveState();
-                loadCurrentChat();
-
-            } catch (err) {
-                if (err.name !== 'AbortError') {
-                    chat.messages.push({ role: 'assistant', content: "⚠️ Connection error or server busy. Please try again." });
-                    saveState();
-                    loadCurrentChat();
-                }
-            } finally {
-                clearTimeout(busyServerTimer);
-                busyNotice.classList.add('hidden');
-                typingIndicator.classList.add('hidden');
-                isGenerating = false;
-                icon.className = "fa-solid fa-arrow-up text-xs";
-                abortController = null;
+                closeReportModal();
+                showModal('Report Submitted', `Thank you. @${target} has been reported for ${reason}. Moderation will review.`);
+            } catch (e) {
+                showModal('Error', 'Failed to submit report.');
             }
+        }
+
+        const profanityList = ['badword1', 'badword2', 'spam', 'scam', 'abuse', 'slur1', 'cuss1'];
+        function validateContent(text) {
+            if (!text || typeof text !== 'string') return false;
+            const emojiRegex = /[\p{Emoji_Presentation}\p{Extended_Pictographic}]/u;
+            if (emojiRegex.test(text)) return "Emojis are strictly prohibited.";
+            const lower = text.toLowerCase();
+            for (let word of profanityList) {
+                if (lower.includes(word)) return "Content violates AI community safety guidelines.";
+            }
+            return null;
+        }
+
+        window.validateUsername = (u) => u.length >= 3 && u.length <= 20 && /^[a-zA-Z0-9_]+$/.test(u) ? null : "Invalid username format.";
+        window.validateDisplayName = (n) => n.length >= 2 && n.length <= 25 ? validateContent(n) : "Display name must be 2-25 chars.";
+        window.validatePassword = (p) => p.length >= 8 && /[A-Z]/.test(p) && /[a-z]/.test(p) && /[0-9]/.test(p) && /[^A-Za-z0-9]/.test(p) ? null : "Password requirements not met.";
+
+        window.handleImageCrop = function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const size = Math.min(img.width, img.height);
+                    canvas.width = 128;
+                    canvas.height = 128;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, (img.width - size)/2, (img.height - size)/2, size, size, 0, 0, 128, 128);
+                    window.croppedBase64Image = canvas.toDataURL('image/jpeg', 0.85);
+                    document.getElementById('pfp-preview').innerHTML = `<img src="${window.croppedBase64Image}" class="w-full h-full object-cover">`;
+                }
+                img.src = e.target.result;
+            }
+            reader.readAsDataURL(file);
+        }
+
+        window.handleSettingsImageCrop = function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const size = Math.min(img.width, img.height);
+                    canvas.width = 128;
+                    canvas.height = 128;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, (img.width - size)/2, (img.height - size)/2, size, size, 0, 0, 128, 128);
+                    window.settingsCroppedBase64 = canvas.toDataURL('image/jpeg', 0.85);
+                    document.getElementById('settings-pfp-preview').innerHTML = `<img src="${window.settingsCroppedBase64}" class="w-full h-full object-cover">`;
+                }
+                img.src = e.target.result;
+            }
+            reader.readAsDataURL(file);
+        }
+
+        window.showModal = (title, message) => {
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-message').innerText = message;
+            document.getElementById('modal-container').classList.remove('hidden');
+        }
+        window.closeModal = () => document.getElementById('modal-container').classList.add('hidden');
+
+        window.openSettingsModal = function() {
+            if (!window.currentUser) return;
+            document.getElementById('settings-displayname').value = window.currentUser.displayName || '';
+            document.getElementById('settings-banner').value = window.currentUser.banner || 'from-blue-600 via-indigo-600 to-purple-600';
+            document.getElementById('settings-bio').value = window.currentUser.bio || '';
+            window.settingsCroppedBase64 = window.currentUser.pfp || null;
+
+            const preview = document.getElementById('settings-pfp-preview');
+            if (window.currentUser.pfp) {
+                preview.innerHTML = `<img src="${window.currentUser.pfp}" class="w-full h-full object-cover">`;
+            } else {
+                preview.innerText = (window.currentUser.displayName || 'U').charAt(0).toUpperCase();
+            }
+
+            document.getElementById('settings-modal').classList.remove('hidden');
+        }
+        window.closeSettingsModal = () => document.getElementById('settings-modal').classList.add('hidden');
+
+        window.saveSettings = async function(event) {
+            event.preventDefault();
+            const displayName = document.getElementById('settings-displayname').value.trim();
+            const banner = document.getElementById('settings-banner').value;
+            const bio = document.getElementById('settings-bio').value.trim();
+
+            const err = validateDisplayName(displayName);
+            if (err) { showModal('Validation Error', err); return; }
+
+            window.currentUser.displayName = displayName;
+            window.currentUser.banner = banner;
+            window.currentUser.bio = bio;
+            if (window.settingsCroppedBase64) {
+                window.currentUser.pfp = window.settingsCroppedBase64;
+            }
+
+            try {
+                await set(ref(db, 'users/' + window.currentUser.username), window.currentUser);
+                localStorage.setItem('chat2_session', JSON.stringify(window.currentUser));
+                initChatUI();
+                closeSettingsModal();
+                showModal('Success', 'Settings updated successfully.');
+            } catch (e) {
+                showModal('Error', 'Failed to update settings in database.');
+            }
+        }
+
+        window.formatText = function(startTag, endTag) {
+            const input = document.getElementById('message-input');
+            const startPos = input.selectionStart;
+            const endPos = input.selectionEnd;
+            const text = input.value;
+            input.value = text.substring(0, startPos) + startTag + text.substring(startPos, endPos) + endTag + text.substring(endPos);
+            input.focus();
+            input.setSelectionRange(startPos + startTag.length, endPos + startTag.length);
+        }
+
+        function getSavedAccounts() {
+            try { return JSON.parse(localStorage.getItem('chat2_saved_accounts') || '[]'); }
+            catch (e) { return []; }
+        }
+
+        function saveAccountToLocal(userData) {
+            let accounts = getSavedAccounts();
+            accounts = accounts.filter(a => a.username !== userData.username);
+            accounts.unshift(userData);
+            localStorage.setItem('chat2_saved_accounts', JSON.stringify(accounts));
+        }
+
+        window.removeSavedAccountForever = async function(event, username) {
+            event.stopPropagation();
+            let accounts = getSavedAccounts();
+            accounts = accounts.filter(a => a.username !== username);
+            localStorage.setItem('chat2_saved_accounts', JSON.stringify(accounts));
+            try { await remove(ref(db, 'users/' + username)); } catch(e) {}
+            renderSavedAccounts();
+        }
+
+        function renderSavedAccounts() {
+            const accounts = getSavedAccounts();
+            const section = document.getElementById('saved-accounts-section');
+            const list = document.getElementById('saved-accounts-list');
+            if (accounts.length === 0) { section.classList.add('hidden'); return; }
+            section.classList.remove('hidden');
+            list.innerHTML = '';
+            accounts.forEach(acc => {
+                const item = document.createElement('div');
+                item.className = 'flex items-center justify-between p-2.5 bg-inputbg border border-bordercolor rounded-lg hover:border-neutral-500 transition cursor-pointer';
+                let avatarHtml = acc.pfp ? `<img src="${acc.pfp}" class="w-8 h-8 rounded-full object-cover">` : `<div class="w-8 h-8 rounded-full bg-neutral-700 flex items-center justify-center text-xs font-bold text-white">${acc.displayName.charAt(0).toUpperCase()}</div>`;
+                item.innerHTML = `
+                    <div class="flex items-center gap-3 flex-1" onclick="selectSavedAccount('${acc.username}')">
+                        ${avatarHtml}
+                        <div>
+                            <p class="text-xs font-semibold text-white">${escapeHtml(acc.displayName)}</p>
+                            <p class="text-[10px] text-neutral-400">@${escapeHtml(acc.username)}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="selectSavedAccount('${acc.username}')" class="px-3 py-1 bg-accentcolor text-white text-xs font-semibold rounded hover:bg-opacity-90 transition">Select</button>
+                        <button type="button" onclick="removeSavedAccountForever(event, '${acc.username}')" class="text-danger hover:text-opacity-80 p-1 text-xs" title="Delete account forever"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        window.selectSavedAccount = async function(username) {
+            try {
+                const snap = await get(ref(db, 'users/' + username));
+                if (snap.exists()) {
+                    window.currentUser = snap.val();
+                    if (!window.currentUser.status) window.currentUser.status = 'online';
+                    localStorage.setItem('chat2_session', JSON.stringify(window.currentUser));
+                    initChatUI();
+                } else {
+                    showModal('Account Error', 'Account record not found.');
+                }
+            } catch (e) {
+                showModal('Connection Error', 'Could not verify account.');
+            }
+        }
+
+        window.handleAuth = async function(event) {
+            event.preventDefault();
+            const username = document.getElementById('auth-username').value.trim();
+            const displayName = document.getElementById('auth-displayname').value.trim();
+            const password = document.getElementById('auth-password').value;
+            const bio = document.getElementById('auth-bio').value.trim();
+
+            let err = validateUsername(username);
+            if (err) { showModal('Validation Error', err); return; }
+            err = validateDisplayName(displayName);
+            if (err) { showModal('Validation Error', err); return; }
+            err = validatePassword(password);
+            if (err) { showModal('Validation Error', err); return; }
+
+            try {
+                const userRef = ref(db, 'users/' + username);
+                const snapshot = await get(userRef);
+
+                if (snapshot.exists()) {
+                    const userData = snapshot.val();
+                    if (userData.password !== btoa(password)) {
+                        showModal('Authentication Failed', 'Username is taken and password did not match.');
+                        return;
+                    }
+                    window.currentUser = userData;
+                } else {
+                    const banners = [
+                        'from-blue-600 via-indigo-600 to-purple-600',
+                        'from-emerald-600 via-teal-600 to-cyan-600',
+                        'from-amber-600 via-orange-600 to-red-600',
+                        'from-pink-600 via-rose-600 to-purple-600'
+                    ];
+                    window.currentUser = {
+                        username,
+                        displayName,
+                        password: btoa(password),
+                        pfp: window.croppedBase64Image || null,
+                        bio: bio || 'Hello! I am using Chat 2.0.',
+                        banner: banners[Math.floor(Math.random() * banners.length)],
+                        status: 'online',
+                        friends: {},
+                        friendRequests: {},
+                        blockedUsers: {},
+                        createdAt: Date.now()
+                    };
+                    await set(userRef, window.currentUser);
+                }
+
+                saveAccountToLocal(window.currentUser);
+                localStorage.setItem('chat2_session', JSON.stringify(window.currentUser));
+                initChatUI();
+            } catch (error) {
+                showModal('Connection Error', 'Failed to authenticate with Firebase.');
+            }
+        }
+
+        function initChatUI() {
+            document.getElementById('auth-view').classList.add('hidden');
+            document.getElementById('chat-view').classList.remove('hidden');
+
+            const avatarEl = document.getElementById('current-user-avatar');
+            const footerAvatar = document.getElementById('footer-avatar');
+            const footerName = document.getElementById('footer-displayname');
+
+            footerName.innerText = window.currentUser.displayName;
+            if (window.currentUser.pfp) {
+                avatarEl.innerHTML = `<img src="${window.currentUser.pfp}" class="w-full h-full object-cover">`;
+                footerAvatar.innerHTML = `<img src="${window.currentUser.pfp}" class="w-full h-full object-cover">`;
+            } else {
+                avatarEl.innerText = window.currentUser.displayName.charAt(0).toUpperCase();
+                footerAvatar.innerText = window.currentUser.displayName.charAt(0).toUpperCase();
+            }
+
+            isManualIdle = (window.currentUser.status === 'idle');
+            updateStatusUI(window.currentUser.status || 'online');
+            listenForMessages();
+            listenForUserData();
+            listenForFriendRequests();
+        }
+
+        window.logout = async function() {
+            if (window.currentUser) {
+                try {
+                    await changeUserStatus('offline');
+                } catch(e) {}
+                saveAccountToLocal(window.currentUser);
+            }
+            localStorage.removeItem('chat2_session');
+            window.location.reload();
+        }
+
+        window.switchAccount = function() {
+            if (window.currentUser) saveAccountToLocal(window.currentUser);
+            localStorage.removeItem('chat2_session');
+            document.getElementById('chat-view').classList.add('hidden');
+            document.getElementById('auth-view').classList.remove('hidden');
+            renderSavedAccounts();
+        }
+
+        window.switchTab = function(tabName) {
+            const globalPanel = document.getElementById('panel-global');
+            const friendsPanel = document.getElementById('panel-friends');
+            const tabGlobal = document.getElementById('tab-global');
+            const tabFriends = document.getElementById('tab-friends');
+            const sidebarFriends = document.getElementById('sidebar-friends-section');
+
+            if (tabName === 'global') {
+                globalPanel.classList.remove('hidden');
+                friendsPanel.classList.add('hidden');
+                tabGlobal.className = 'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-white bg-inputbg transition';
+                tabFriends.className = 'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-neutral-400 hover:text-white hover:bg-inputbg/50 transition';
+                sidebarFriends.classList.add('hidden');
+            } else {
+                globalPanel.classList.add('hidden');
+                friendsPanel.classList.remove('hidden');
+                tabFriends.className = 'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-white bg-inputbg transition';
+                tabGlobal.className = 'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-neutral-400 hover:text-white hover:bg-inputbg/50 transition';
+                sidebarFriends.classList.remove('hidden');
+                renderFriendsAndRequestsUI();
+            }
+        }
+
+        function listenForUserData() {
+            if (!window.currentUser) return;
+            const userRef = ref(db, 'users/' + window.currentUser.username);
+            onValue(userRef, (snapshot) => {
+                if (snapshot.exists()) {
+                    window.currentUser = snapshot.val();
+                    localStorage.setItem('chat2_session', JSON.stringify(window.currentUser));
+                    renderFriendsAndRequestsUI();
+                }
+            });
+        }
+
+        function listenForFriendRequests() {
+            if (!window.currentUser) return;
+            const reqRef = ref(db, `users/${window.currentUser.username}/friendRequests`);
+            onChildAdded(reqRef, (snapshot) => {
+                const req = snapshot.val();
+                if (!req) return;
+                window.currentPendingRequestFrom = req.username;
+                showFriendRequestPopup(req);
+            });
+        }
+
+        function showFriendRequestPopup(req) {
+            const popup = document.getElementById('friend-request-popup');
+            const avatar = document.getElementById('fr-popup-avatar');
+            const text = document.getElementById('fr-popup-text');
+
+            if (req.pfp) avatar.innerHTML = `<img src="${req.pfp}" class="w-full h-full object-cover">`;
+            else avatar.innerText = req.displayName.charAt(0).toUpperCase();
+            text.innerText = `${req.displayName} (@${req.username}) sent a friend request.`;
+            popup.classList.remove('hidden');
+        }
+
+        window.acceptPendingFriendRequest = async function() {
+            const fromUser = window.currentPendingRequestFrom;
+            document.getElementById('friend-request-popup').classList.add('hidden');
+            if (!fromUser) return;
+            try {
+                await set(ref(db, `users/${window.currentUser.username}/friends/${fromUser}`), true);
+                await set(ref(db, `users/${fromUser}/friends/${window.currentUser.username}`), true);
+                await remove(ref(db, `users/${window.currentUser.username}/friendRequests/${fromUser}`));
+                showModal('Success', `You are now friends with @${fromUser}!`);
+            } catch (e) { showModal('Error', 'Failed to accept request.'); }
+        }
+
+        window.declinePendingFriendRequest = async function() {
+            const fromUser = window.currentPendingRequestFrom;
+            document.getElementById('friend-request-popup').classList.add('hidden');
+            if (!fromUser) return;
+            try {
+                await remove(ref(db, `users/${window.currentUser.username}/friendRequests/${fromUser}`));
+                localStorage.setItem(`cooldown_${fromUser}`, Date.now() + 10000);
+            } catch (e) {}
+        }
+
+        window.openProfileModal = async function(username) {
+            try {
+                const snap = await get(ref(db, 'users/' + username));
+                if (!snap.exists()) return;
+                const profile = snap.val();
+
+                const banner = document.getElementById('profile-banner');
+                const avatar = document.getElementById('profile-avatar');
+                const displayName = document.getElementById('profile-displayname');
+                const usernameEl = document.getElementById('profile-username');
+                const bio = document.getElementById('profile-bio');
+                const actions = document.getElementById('profile-actions');
+                const statusDot = document.getElementById('profile-status-dot');
+                const statusBadge = document.getElementById('profile-status-badge');
+
+                banner.className = `h-32 bg-gradient-to-r ${profile.banner || 'from-blue-600 via-purple-600 to-pink-600'} relative`;
+                if (profile.pfp) avatar.innerHTML = `<img src="${profile.pfp}" class="w-full h-full object-cover">`;
+                else avatar.innerText = profile.displayName.charAt(0).toUpperCase();
+
+                displayName.innerText = profile.displayName;
+                usernameEl.innerText = '@' + profile.username;
+                bio.innerText = profile.bio || 'No bio provided.';
+
+                const userStatus = profile.status || 'online';
+                statusDot.className = 'absolute bottom-1 right-1 w-4 h-4 rounded-full border-2 border-cardbg';
+                if (userStatus === 'online') {
+                    statusDot.classList.add('bg-success');
+                    statusBadge.className = 'px-2 py-0.5 rounded text-[10px] font-semibold bg-success/20 text-success';
+                    statusBadge.innerText = 'Online';
+                } else if (userStatus === 'idle') {
+                    statusDot.classList.add('bg-idlecolor');
+                    statusBadge.className = 'px-2 py-0.5 rounded text-[10px] font-semibold bg-idlecolor/25 text-idlecolor';
+                    statusBadge.innerText = 'Idle';
+                } else {
+                    statusDot.classList.add('bg-offlinecolor');
+                    statusBadge.className = 'px-2 py-0.5 rounded text-[10px] font-semibold bg-offlinecolor/25 text-offlinecolor';
+                    statusBadge.innerText = 'Offline';
+                }
+
+                actions.innerHTML = '';
+                if (profile.username !== window.currentUser.username) {
+                    const isBlocked = window.currentUser.blockedUsers && window.currentUser.blockedUsers[profile.username];
+                    const isFriend = window.currentUser.friends && window.currentUser.friends[profile.username];
+                    const hasPending = profile.friendRequests && profile.friendRequests[window.currentUser.username];
+
+                    let friendBtnText = 'Add Friend';
+                    let friendBtnClass = 'bg-accentcolor hover:bg-opacity-90 text-white';
+                    let friendDisabled = false;
+
+                    const cooldownEnd = parseInt(localStorage.getItem(`cooldown_${profile.username}`) || '0');
+                    if (isFriend) {
+                        friendBtnText = 'Friended <i class="fa-solid fa-check ml-1"></i>';
+                        friendBtnClass = 'bg-success text-white';
+                    } else if (hasPending) {
+                        friendBtnText = 'Request Pending';
+                        friendBtnClass = 'bg-neutral-700 text-neutral-400 cursor-not-allowed';
+                        friendDisabled = true;
+                    } else if (cooldownEnd > Date.now()) {
+                        friendBtnText = 'Cooldown (10s)';
+                        friendBtnClass = 'bg-neutral-700 text-neutral-400 cursor-not-allowed';
+                        friendDisabled = true;
+                    }
+
+                    if (isFriend) {
+                        actions.innerHTML += `<button onclick="unfriendUser('${profile.username}')" class="px-3 py-2 bg-danger hover:bg-opacity-90 text-white text-xs font-semibold rounded-lg transition">Unfriend</button>`;
+                    } else {
+                        actions.innerHTML += `<button onclick="${friendDisabled ? '' : `sendFriendRequest('${profile.username}')`}" class="px-3 py-2 text-xs font-semibold rounded-lg transition ${friendBtnClass}" ${friendDisabled ? 'disabled' : ''}>${friendBtnText}</button>`;
+                    }
+
+                    const blockBtnText = isBlocked ? 'Unblock' : 'Block';
+                    const blockBtnClass = isBlocked ? 'bg-neutral-700 text-white' : 'bg-neutral-700 hover:bg-neutral-600 text-white';
+                    actions.innerHTML += `<button onclick="toggleBlockUser('${profile.username}')" class="px-3 py-2 text-xs font-semibold rounded-lg transition ${blockBtnClass}">${blockBtnText}</button>`;
+                    
+                    actions.innerHTML += `<button onclick="closeProfileModal(); openReportModal('${profile.username}')" class="px-3 py-2 bg-danger/80 hover:bg-danger text-white text-xs font-semibold rounded-lg transition" title="Report User"><i class="fa-solid fa-flag"></i></button>`;
+                }
+
+                document.getElementById('profile-modal').classList.remove('hidden');
+            } catch (e) { showModal('Error', 'Could not load profile.'); }
+        }
+
+        window.closeProfileModal = () => document.getElementById('profile-modal').classList.add('hidden');
+
+        window.sendFriendRequest = async function(targetUsername) {
+            try {
+                const targetSnap = await get(ref(db, 'users/' + targetUsername));
+                if (targetSnap.exists() && targetSnap.val().blockedUsers && targetSnap.val().blockedUsers[window.currentUser.username]) {
+                    showModal('Cannot Send', 'This user has blocked you.');
+                    return;
+                }
+                await set(ref(db, `users/${targetUsername}/friendRequests/${window.currentUser.username}`), {
+                    username: window.currentUser.username,
+                    displayName: window.currentUser.displayName,
+                    pfp: window.currentUser.pfp || null,
+                    timestamp: Date.now()
+                });
+                showModal('Sent', `Friend request sent to @${targetUsername}!`);
+                closeProfileModal();
+            } catch (e) { showModal('Error', 'Failed to send request.'); }
+        }
+
+        window.unfriendUser = async function(targetUsername) {
+            try {
+                await remove(ref(db, `users/${window.currentUser.username}/friends/${targetUsername}`));
+                await remove(ref(db, `users/${targetUsername}/friends/${window.currentUser.username}`));
+                
+                // Fix: Close active DM chat if unfriending current DM partner
+                if (window.activeDmFriend === targetUsername) {
+                    window.activeDmFriend = null;
+                    document.getElementById('dm-chat-area').classList.add('hidden');
+                    document.getElementById('dm-placeholder').classList.remove('hidden');
+                }
+
+                showModal('Unfriended', `Removed @${targetUsername} from friends.`);
+                closeProfileModal();
+            } catch (e) { showModal('Error', 'Failed to unfriend.'); }
+        }
+
+        window.toggleBlockUser = async function(targetUsername) {
+            try {
+                const isBlocked = window.currentUser.blockedUsers && window.currentUser.blockedUsers[targetUsername];
+                if (isBlocked) {
+                    await remove(ref(db, `users/${window.currentUser.username}/blockedUsers/${targetUsername}`));
+                    showModal('Unblocked', `You have unblocked @${targetUsername}.`);
+                } else {
+                    await set(ref(db, `users/${window.currentUser.username}/blockedUsers/${targetUsername}`), true);
+                    await remove(ref(db, `users/${window.currentUser.username}/friends/${targetUsername}`));
+                    await remove(ref(db, `users/${targetUsername}/friends/${window.currentUser.username}`));
+                    
+                    // Fix: Close active DM chat if blocking current DM partner
+                    if (window.activeDmFriend === targetUsername) {
+                        window.activeDmFriend = null;
+                        document.getElementById('dm-chat-area').classList.add('hidden');
+                        document.getElementById('dm-placeholder').classList.remove('hidden');
+                    }
+
+                    showModal('Blocked', `Blocked @${targetUsername} and removed them from friends.`);
+                }
+                closeProfileModal();
+            } catch (e) { showModal('Error', 'Failed to update block status.'); }
+        }
+
+        async function renderFriendsAndRequestsUI() {
+            if (!window.currentUser) return;
+            const reqContainer = document.getElementById('friend-requests-container');
+            const friendsContainer = document.getElementById('friends-list-container');
+            const sidebarFriendsList = document.getElementById('sidebar-friends-list');
+
+            const requests = window.currentUser.friendRequests || {};
+            const reqKeys = Object.keys(requests);
+            if (reqKeys.length === 0) {
+                reqContainer.innerHTML = `<p class="text-xs text-neutral-500 italic">No pending requests.</p>`;
+            } else {
+                reqContainer.innerHTML = '';
+                reqKeys.forEach(username => {
+                    const req = requests[username];
+                    const div = document.createElement('div');
+                    div.className = 'flex items-center justify-between p-2.5 bg-inputbg rounded-lg border border-bordercolor';
+                    let avatar = req.pfp ? `<img src="${req.pfp}" class="w-7 h-7 rounded-full object-cover">` : `<div class="w-7 h-7 rounded-full bg-neutral-700 flex items-center justify-center text-xs font-bold text-white">${req.displayName.charAt(0)}</div>`;
+                    div.innerHTML = `
+                        <div class="flex items-center gap-2 cursor-pointer" onclick="openProfileModal('${username}')">
+                            ${avatar}
+                            <div>
+                                <p class="text-xs font-semibold text-white">${escapeHtml(req.displayName)}</p>
+                                <p class="text-[10px] text-neutral-400">@${escapeHtml(req.username)}</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-1">
+                            <button onclick="acceptSpecificRequest('${username}')" class="p-1.5 bg-success text-white rounded text-xs"><i class="fa-solid fa-check"></i></button>
+                            <button onclick="declineSpecificRequest('${username}')" class="p-1.5 bg-danger text-white rounded text-xs"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    `;
+                    reqContainer.appendChild(div);
+                });
+            }
+
+            const friends = window.currentUser.friends || {};
+            const friendKeys = Object.keys(friends);
+            if (friendKeys.length === 0) {
+                friendsContainer.innerHTML = `<p class="text-xs text-neutral-500 italic">No friends added yet.</p>`;
+                sidebarFriendsList.innerHTML = `<p class="text-xs text-neutral-500 italic px-2">No friends yet.</p>`;
+            } else {
+                friendsContainer.innerHTML = '';
+                sidebarFriendsList.innerHTML = '';
+                for (let username of friendKeys) {
+                    try {
+                        const snap = await get(ref(db, 'users/' + username));
+                        if (!snap.exists()) continue;
+                        const fd = snap.val();
+
+                        const statusColor = fd.status === 'online' ? 'bg-success' : fd.status === 'idle' ? 'bg-idlecolor' : 'bg-offlinecolor';
+                        let avatar = fd.pfp ? `<img src="${fd.pfp}" class="w-8 h-8 rounded-full object-cover">` : `<div class="w-8 h-8 rounded-full bg-neutral-700 flex items-center justify-center text-xs font-bold text-white">${fd.displayName.charAt(0)}</div>`;
+
+                        const div = document.createElement('div');
+                        div.className = 'flex items-center justify-between p-2.5 bg-inputbg rounded-lg border border-bordercolor hover:border-neutral-500 transition cursor-pointer';
+                        div.innerHTML = `
+                            <div class="flex items-center gap-3 flex-1" onclick="openDmChat('${username}', '${escapeHtml(fd.displayName)}', '${fd.pfp || ''}')">
+                                <div class="relative">
+                                    ${avatar}
+                                    <div class="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-cardbg ${statusColor}"></div>
+                                </div>
+                                <div onclick="event.stopPropagation(); openProfileModal('${username}')">
+                                    <p class="text-xs font-semibold text-white hover:underline">${escapeHtml(fd.displayName)}</p>
+                                    <p class="text-[10px] text-neutral-400">@${escapeHtml(fd.username)}</p>
+                                </div>
+                            </div>
+                            <button onclick="openDmChat('${username}', '${escapeHtml(fd.displayName)}', '${fd.pfp || ''}')" class="px-3 py-1 bg-accentcolor text-white text-xs font-semibold rounded hover:bg-opacity-90 transition">DM</button>
+                        `;
+                        friendsContainer.appendChild(div);
+
+                        const sideDiv = document.createElement('button');
+                        sideDiv.className = 'w-full flex items-center gap-3 px-2 py-2 rounded-lg text-xs font-medium text-neutral-300 hover:text-white hover:bg-inputbg transition text-left';
+                        sideDiv.onclick = () => openDmChat(username, fd.displayName, fd.pfp || '');
+                        sideDiv.innerHTML = `
+                            <div class="relative shrink-0">
+                                ${avatar}
+                                <div class="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-cardbg ${statusColor}"></div>
+                            </div>
+                            <span class="truncate">${escapeHtml(fd.displayName)}</span>
+                        `;
+                        sidebarFriendsList.appendChild(sideDiv);
+                    } catch (e) {}
+                }
+            }
+        }
+
+        window.acceptSpecificRequest = async (u) => { window.currentPendingRequestFrom = u; await acceptPendingFriendRequest(); }
+        window.declineSpecificRequest = async (u) => { window.currentPendingRequestFrom = u; await declinePendingFriendRequest(); }
+
+        window.openDmChat = function(username, displayName, pfp) {
+            window.activeDmFriend = username;
+            document.getElementById('dm-placeholder').classList.add('hidden');
+            document.getElementById('dm-chat-area').classList.remove('hidden');
+
+            const headerName = document.getElementById('dm-header-name');
+            const headerAvatar = document.getElementById('dm-header-avatar');
+            headerName.innerText = displayName;
+            headerName.onclick = () => openProfileModal(username);
+            headerAvatar.onclick = () => openProfileModal(username);
+
+            if (pfp) headerAvatar.innerHTML = `<img src="${pfp}" class="w-full h-full object-cover">`;
+            else headerAvatar.innerText = displayName.charAt(0).toUpperCase();
+
+            listenForDmMessages(username);
+        }
+
+        function listenForDmMessages(friendUsername) {
+            const container = document.getElementById('dm-messages');
+            container.innerHTML = '';
+            
+            const chatId = [window.currentUser.username, friendUsername].sort().join('_');
+            const dmRef = ref(db, `dms/${chatId}/messages`);
+
+            if (window.activeDmRef) {
+                off(window.activeDmRef);
+            }
+            window.activeDmRef = dmRef;
+
+            onChildAdded(dmRef, (snapshot) => {
+                const msg = snapshot.val();
+                const msgKey = snapshot.key;
+                const isSelf = msg.senderUsername === window.currentUser.username;
+                const div = document.createElement('div');
+                div.className = `flex items-start gap-3 mb-3 group ${isSelf ? 'flex-row-reverse' : ''}`;
+                
+                let senderData = (window.allUsers && window.allUsers[msg.senderUsername]) || {};
+                let currentName = senderData.displayName || msg.senderDisplayName;
+                let currentPfp = senderData.pfp !== undefined ? senderData.pfp : msg.senderPfp;
+
+                let avatar = currentPfp ? `<img src="${currentPfp}" class="w-8 h-8 rounded-full object-cover cursor-pointer" onclick="openProfileModal('${msg.senderUsername}')">` : `<div class="w-8 h-8 rounded-full bg-neutral-700 flex items-center justify-center text-xs font-bold text-white cursor-pointer" onclick="openProfileModal('${msg.senderUsername}')">${currentName.charAt(0)}</div>`;
+                
+                let deleteBtn = isSelf ? `<button onclick="deleteDmMessage('${chatId}', '${msgKey}')" class="text-[10px] text-neutral-500 hover:text-danger opacity-0 group-hover:opacity-100 transition mt-1"><i class="fa-solid fa-trash"></i> Delete</button>` : '';
+
+                div.innerHTML = `
+                    <div>${avatar}</div>
+                    <div class="max-w-md ${isSelf ? 'text-right' : ''}">
+                        <div class="p-3 rounded-xl text-sm ${isSelf ? 'bg-accentcolor text-white rounded-tr-none' : 'bg-cardbg border border-bordercolor text-neutral-200 rounded-tl-none'}">
+                            <p class="break-words">${escapeHtml(msg.text)}</p>
+                        </div>
+                        ${deleteBtn}
+                    </div>
+                `;
+                container.appendChild(div);
+                container.scrollTop = container.scrollHeight;
+            });
+        }
+
+        window.sendDmMessage = async function(event) {
+            event.preventDefault();
+            const input = document.getElementById('dm-input');
+            const text = input.value.trim();
+            if (!text || !window.activeDmFriend) return;
+
+            const modErr = await checkAutoMod(text);
+            if (modErr) { showModal('Action Blocked', modErr); return; }
+
+            const chatId = [window.currentUser.username, window.activeDmFriend].sort().join('_');
+            const dmRef = ref(db, `dms/${chatId}/messages`);
+
+            const msgData = {
+                senderUsername: window.currentUser.username,
+                senderDisplayName: window.currentUser.displayName,
+                senderPfp: window.currentUser.pfp || null,
+                text: text,
+                timestamp: Date.now()
+            };
+
+            try {
+                await push(dmRef, msgData);
+                input.value = '';
+            } catch (e) { showModal('Error', 'Failed to send DM.'); }
+        }
+
+        window.deleteDmMessage = async function(chatId, msgKey) {
+            try {
+                await remove(ref(db, `dms/${chatId}/messages/${msgKey}`));
+                const container = document.getElementById('dm-messages');
+                container.innerHTML = '';
+                listenForDmMessages(window.activeDmFriend);
+            } catch (e) { showModal('Error', 'Could not delete message.'); }
+        }
+
+        window.sendMessage = async function(event) {
+            event.preventDefault();
+            const input = document.getElementById('message-input');
+            const text = input.value.trim();
+            if (!text) return;
+
+            const modErr = await checkAutoMod(text);
+            if (modErr) { showModal('Action Blocked', modErr); return; }
+
+            const messageData = {
+                senderUsername: window.currentUser.username,
+                senderDisplayName: window.currentUser.displayName,
+                senderPfp: window.currentUser.pfp || null,
+                text: text,
+                timestamp: Date.now(),
+                replyTo: window.activeReplyData ? {
+                    id: window.activeReplyData.id,
+                    sender: window.activeReplyData.sender,
+                    text: window.activeReplyData.text,
+                    targetUsername: window.activeReplyData.targetUsername
+                } : null
+            };
+
+            try {
+                await push(ref(db, 'messages'), messageData);
+                input.value = '';
+                cancelReply();
+            } catch (e) { showModal('Error', 'Failed to send message.'); }
+        }
+
+        window.deleteMessage = async function(msgId) {
+            try {
+                await remove(ref(db, 'messages/' + msgId));
+                const msgEl = document.getElementById(`msg-${msgId}`);
+                if (msgEl) msgEl.remove();
+            } catch (e) { showModal('Error', 'Could not delete message.'); }
+        }
+
+        function listenForMessages() {
+            const messagesRef = ref(db, 'messages');
+            const container = document.getElementById('chat-messages');
+
+            onChildAdded(messagesRef, (snapshot) => {
+                const msg = snapshot.val();
+                const msgId = snapshot.key;
+
+                // Fix: Prevent duplicate messages in DOM
+                if (document.getElementById(`msg-${msgId}`)) return;
+
+                const isSelf = window.currentUser && msg.senderUsername === window.currentUser.username;
+                
+                // Fix: Completely ignore / do not render blocked user messages
+                const isBlocked = window.currentUser && window.currentUser.blockedUsers && window.currentUser.blockedUsers[msg.senderUsername];
+                if (isBlocked) return;
+
+                const isSystem = msg.isSystem;
+
+                const div = document.createElement('div');
+                div.id = `msg-${msgId}`;
+                div.className = `flex items-start gap-3 group mb-4 ${isSelf ? 'flex-row-reverse' : ''}`;
+
+                if (isSystem) {
+                    div.className = 'flex justify-center my-2';
+                    div.innerHTML = `<div class="bg-neutral-800/80 border border-bordercolor px-4 py-1.5 rounded-full text-xs text-neutral-300 italic"><i class="fa-solid fa-robot mr-1.5 text-accentcolor"></i> ${escapeHtml(msg.text)}</div>`;
+                    container.appendChild(div);
+                    container.scrollTop = container.scrollHeight;
+                    return;
+                }
+
+                // Fix: Fetch latest display name and pfp dynamically for name change updates on old messages
+                const senderData = (window.allUsers && window.allUsers[msg.senderUsername]) || {};
+                const currentDisplayName = senderData.displayName || msg.senderDisplayName;
+                const currentPfp = senderData.pfp !== undefined ? senderData.pfp : msg.senderPfp;
+
+                let avatarHtml = currentPfp ? `<img src="${currentPfp}" class="w-9 h-9 rounded-full object-cover border border-bordercolor cursor-pointer" onclick="openProfileModal('${msg.senderUsername}')">` : `<div class="w-9 h-9 rounded-full bg-neutral-700 border border-bordercolor flex items-center justify-center text-xs font-bold text-white cursor-pointer" onclick="openProfileModal('${msg.senderUsername}')">${currentDisplayName.charAt(0).toUpperCase()}</div>`;
+
+                let replyMarkup = msg.replyTo ? `
+                    <div class="mb-1.5 px-3 py-1 bg-neutral-900/60 border-l-2 border-orangereply rounded text-[11px] text-neutral-400">
+                        <span class="font-semibold text-white">@${escapeHtml(msg.replyTo.sender)}</span>: ${escapeHtml(msg.replyTo.text)}
+                    </div>
+                ` : '';
+
+                let formattedText = escapeHtml(msg.text)
+                    .replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold">$1</strong>')
+                    .replace(/\*(.*?)\*/g, '<em class="italic">$1</em>')
+                    .replace(/&lt;u&gt;(.*?)&lt;\/u&gt;/g, '<span class="underline">$1</span>')
+                    .replace(/<u>(.*?)<\/u>/g, '<span class="underline">$1</span>')
+                    .replace(/`(.*?)`/g, '<code class="bg-black/40 px-1.5 py-0.5 rounded font-mono text-xs">$1</code>');
+
+                let contentMarkup = `
+                    <div class="p-3.5 rounded-xl text-sm leading-relaxed bg-cardbg border border-bordercolor text-neutral-200">
+                        ${replyMarkup}
+                        <p class="break-words">${formattedText}</p>
+                    </div>
+                `;
+
+                // Fix: Remove reply button on your own messages, keep only delete. Keep reply only on others.
+                let actionButtonMarkup = '';
+                if (isSelf) {
+                    actionButtonMarkup = `<button onclick="deleteMessage('${msgId}')" class="text-danger hover:text-opacity-80 transition">Delete</button>`;
+                } else {
+                    actionButtonMarkup = `<button onclick="setReply('${msgId}', '${escapeHtml(currentDisplayName)}', '${escapeHtml(msg.text.replace(/'/g, "\\'"))}', '${msg.senderUsername}')" class="text-neutral-400 hover:text-white transition">Reply</button>`;
+                }
+
+                div.innerHTML = `
+                    <div>${avatarHtml}</div>
+                    <div class="max-w-lg ${isSelf ? 'text-right' : ''}">
+                        <div class="flex items-center gap-2 mb-1 ${isSelf ? 'justify-end' : ''}">
+                            <span class="text-xs font-semibold text-neutral-300 cursor-pointer hover:underline" onclick="openProfileModal('${msg.senderUsername}')">${escapeHtml(currentDisplayName)}</span>
+                            <span class="text-[10px] text-neutral-500">${new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                        </div>
+                        ${contentMarkup}
+                        <div class="flex items-center gap-3 mt-1 opacity-0 group-hover:opacity-100 transition text-[11px] ${isSelf ? 'justify-end' : ''}">
+                            ${actionButtonMarkup}
+                        </div>
+                    </div>
+                `;
+
+                container.appendChild(div);
+                container.scrollTop = container.scrollHeight;
+            });
+        }
+
+        window.setReply = function(id, sender, text, senderUsername) {
+            window.activeReplyData = { id, sender, text, targetUsername: senderUsername };
+            document.getElementById('reply-banner').classList.remove('hidden');
+            document.getElementById('reply-to-user').innerText = sender;
+            document.getElementById('reply-to-text').innerText = text;
+            document.getElementById('message-input').focus();
+        }
+
+        window.cancelReply = function() {
+            window.activeReplyData = null;
+            document.getElementById('reply-banner').classList.add('hidden');
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
         }
     </script>
 </body>
